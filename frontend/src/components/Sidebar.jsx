@@ -1,15 +1,16 @@
 const Sidebar = ({ activeTab, setActiveTab }) => {
   const menuItems = [
-    { id: 'all', label: 'Visão Geral', icon: '📊' },
-    { id: 'OV', label: 'Orçamentos', icon: '📝' },
-    { id: 'PD', label: 'Pedidos', icon: '🛒' },
-    { id: 'DV', label: 'Desenvolvimentos', icon: '⚙️' },
+    { id: 'all', label: 'Visão Geral' },
+    { id: 'OV', label: 'Orçamentos' },
+    { id: 'PD', label: 'Pedidos' },
+    { id: 'DV', label: 'Desenvolvimentos' },
+    { id: 'METAS', label: 'Gestão de Metas' },
+    { id: 'RANKING', label: 'Meta x Realizado' },
   ];
 
   return (
     <div className="sidebar">
       <div className="sidebar-logo">
-        <span className="logo-icon">🚀</span>
         <span className="logo-text">MegaCRM</span>
       </div>
       <nav className="sidebar-nav">
@@ -19,8 +20,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
             className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
             onClick={() => setActiveTab(item.id)}
           >
-            <span className="nav-icon">{item.icon}</span>
-            <span className="nav-label">{item.label}</span>
+            {item.label}
           </button>
         ))}
       </nav>
@@ -32,3 +32,4 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
 };
 
 export default Sidebar;
+
