@@ -90,8 +90,41 @@ app.delete('/api/metas/:id', async (req, res) => {
     if (error) throw error;
     res.json({ success: true });
   } catch (error) {
-    console.error("Erro na rota DELETE /api/metas:", error);
+    console.error("Erro na rota DELETE /api/metas/:id:", error);
     res.status(500).json({ error: "Erro ao excluir meta." });
+  }
+});
+
+// --- CRM Pipeline ---
+app.get('/api/crm/pipeline', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('crm_pipeline')
+      .select('*');
+    if (error) throw error;
+    res.json(data || []);
+  } catch (error) {
+    console.error("Erro na rota GET /api/crm/pipeline:", error);
+    res.status(500).json({ error: "Erro ao buscar pipeline." });
+  }
+});
+
+app.post('/api/crm/pipeline', async (req, res) => {
+  try {
+    const { org_in_codigo, ser_st_codigo, ped_in_codigo, stage } = req.body;
+    
+    const { data, error } = await supabase
+      .from('crm_pipeline')
+      .upsert(
+        { org_in_codigo, ser_st_codigo, ped_in_codigo, stage, updated_at: new Date() },
+        { onConflict: 'org_in_codigo,ser_st_codigo,ped_in_codigo' }
+      );
+
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Erro na rota POST /api/crm/pipeline:", error);
+    res.status(500).json({ error: "Erro ao salvar estágio do pipeline." });
   }
 });
 

@@ -4,6 +4,7 @@ import StatCard from './components/StatCard';
 import OrdersTable from './components/OrdersTable';
 import MetasManager from './components/MetasManager';
 import RankingMetas from './components/RankingMetas';
+import PipelineCRM from './components/PipelineCRM';
 
 function App() {
   // Datas padrão: Mês Atual
@@ -127,6 +128,9 @@ function App() {
                 {activeTab === 'all' && 'Visão Geral das Vendas'}
                 {activeTab === 'OV' && 'Orçamentos'}
                 {activeTab === 'PD' && 'Pedidos'}
+                {activeTab === 'CRM_PIPELINE' && 'CRM: Pipeline de Orçamentos'}
+                {activeTab === 'CRM_FOLLOWUP' && 'CRM: Follow Up'}
+                {activeTab === 'CRM_AGENDA' && 'CRM: Agenda'}
                 {activeTab === 'DV' && 'Desenvolvimentos'}
                 {activeTab === 'METAS' && 'Gestão de Metas'}
                 {activeTab === 'RANKING' && 'Ranking: Meta x Realizado'}
@@ -186,28 +190,40 @@ function App() {
             <MetasManager repsList={repsList} metas={metas} fetchMetas={fetchMetas} />
           ) : activeTab === 'RANKING' ? (
             <RankingMetas pedidos={pedidos} metas={metas} representantes={repsList} startDate={startDate} />
+          ) : activeTab === 'CRM_PIPELINE' ? (
+            <PipelineCRM pedidos={pedidos} />
+          ) : activeTab === 'CRM_FOLLOWUP' ? (
+            <div style={{ padding: '2rem', textAlign: 'center', backgroundColor: 'var(--panel-bg)', borderRadius: '8px', border: '1px solid var(--panel-border)' }}>
+              <h2 style={{ color: 'var(--text-main)' }}>Módulo Follow Up</h2>
+              <p style={{ color: 'var(--text-muted)' }}>Gerenciamento de retornos e acompanhamento de clientes em desenvolvimento.</p>
+            </div>
+          ) : activeTab === 'CRM_AGENDA' ? (
+            <div style={{ padding: '2rem', textAlign: 'center', backgroundColor: 'var(--panel-bg)', borderRadius: '8px', border: '1px solid var(--panel-border)' }}>
+              <h2 style={{ color: 'var(--text-main)' }}>Módulo Agenda</h2>
+              <p style={{ color: 'var(--text-muted)' }}>Sincronização de visitas e compromissos comerciais em desenvolvimento.</p>
+            </div>
           ) : (
             <>
               {currentMetaValue > 0 && (activeTab === 'PD' || activeTab === 'all') && (
-                <div className="meta-dashboard-panel" style={{ backgroundColor: 'var(--panel-bg)', padding: '1.5rem', marginBottom: '1.5rem', border: '1px solid var(--panel-border)', borderRadius: '6px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <div className="meta-dashboard-panel" style={{ backgroundColor: 'var(--panel-bg)', padding: '0.85rem 1rem', marginBottom: '0.75rem', border: '1px solid var(--panel-border)', borderRadius: '4px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
                     <div>
-                      <h3 style={{ fontSize: '0.875rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      <h3 style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                         Meta do Mês ({currentMonth.split('-').reverse().join('/')})
                       </h3>
-                      <div style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-main)', marginTop: '0.25rem' }}>
+                      <div style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--text-main)' }}>
                         {formatCurrency(currentMetaValue)}
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <h3 style={{ fontSize: '0.875rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Atingimento</h3>
-                      <div style={{ fontSize: '1.5rem', fontWeight: '700', color: progressColor, marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                        {atingimento >= 100 && <span style={{ fontSize: '0.9rem', fontWeight: '500', color: '#10b981' }}>🎉 Parabéns! Meta atingida!</span>}
+                      <h3 style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Atingimento</h3>
+                      <div style={{ fontSize: '1.1rem', fontWeight: '700', color: progressColor, display: 'flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'flex-end' }}>
+                        {atingimento >= 100 && <span style={{ fontSize: '0.8rem', fontWeight: '500', color: '#10b981' }}>🎉 Meta atingida!</span>}
                         {atingimento.toFixed(1)}%
                       </div>
                     </div>
                   </div>
-                  <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--bg-color)', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div style={{ width: '100%', height: '5px', backgroundColor: 'var(--bg-color)', borderRadius: '3px', overflow: 'hidden' }}>
                     <div style={{ width: `${Math.min(atingimento, 100)}%`, height: '100%', backgroundColor: progressColor, transition: 'width 0.5s ease-in-out' }}></div>
                   </div>
                 </div>
@@ -216,8 +232,11 @@ function App() {
               <section className="stats-grid">
                 <StatCard title="Total Bruto" value={formatCurrency(totalBruto)} />
                 <StatCard title="Valor Líquido" value={formatCurrency(valorLiquido)} />
-                <StatCard title="Pedidos Cancelados" value={formatCurrency(valorCancelados)} />
-                <StatCard title="Valor Faturado" value={formatCurrency(valorFaturados)} />
+                <StatCard 
+                  title={activeTab === 'OV' ? "Orçamentos Cancelados" : activeTab === 'DV' ? "Desenvolvimentos Cancelados" : "Pedidos Cancelados"} 
+                  value={formatCurrency(valorCancelados)} 
+                />
+                {activeTab !== 'OV' && activeTab !== 'DV' && <StatCard title="Valor Faturado" value={formatCurrency(valorFaturados)} />}
                 <StatCard title="Qtd. Registros" value={count} />
               </section>
 
@@ -232,11 +251,101 @@ function App() {
                 </div>
               ) : (
                 <section className="table-container">
-                  <div className="table-header-bar">
+                  {/* Resumo apenas para o PDF */}
+                  <div className="print-only-summary" style={{ display: 'none' }}>
+                    <h1 style={{ margin: '0 0 10px 0' }}>Relatório de {activeTab === 'all' ? 'Registros' : activeTab === 'OV' ? 'Orçamentos' : activeTab === 'PD' ? 'Pedidos' : 'Desenvolvimentos'}</h1>
+                    <div style={{ display: 'flex', gap: '20px', marginBottom: '20px', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
+                      <span><strong>Total Bruto:</strong> {formatCurrency(totalBruto)}</span>
+                      <span><strong>Valor Líquido:</strong> {formatCurrency(valorLiquido)}</span>
+                      {activeTab !== 'OV' && activeTab !== 'DV' && <span><strong>Valor Faturado:</strong> {formatCurrency(valorFaturados)}</span>}
+                      <span><strong>Cancelados:</strong> {formatCurrency(valorCancelados)}</span>
+                      <span><strong>Qtd:</strong> {count}</span>
+                    </div>
+                  </div>
+
+                  <div className="table-header-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h2>Lista de {activeTab === 'all' ? 'Registros' : 
                                   activeTab === 'OV' ? 'Orçamentos' : 
                                   activeTab === 'PD' ? 'Pedidos' : 'Desenvolvimentos'}</h2>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button 
+                        onClick={() => window.print()}
+                        className="export-btn"
+                        style={{
+                          padding: '0.25rem 0.5rem',
+                          backgroundColor: '#3b82f6',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontWeight: '600',
+                          fontSize: '0.75rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem'
+                        }}
+                      >
+                        Exportar PDF
+                      </button>
+                      
+                      <button 
+                        onClick={() => {
+                        const getStatusNome = (s) => {
+                          switch(s) {
+                            case 'E': return 'Encerrado';
+                            case 'A': case 'P': return 'Em Aberto';
+                            case 'C': return 'Cancelado';
+                            case 'F': return 'Faturado';
+                            case 'B': return 'Em Aprovação';
+                            default: return s;
+                          }
+                        };
+
+                        const headers = ["Pedido", "Tipo", "Emissao", "COD", "Cliente", "Representante", "Status", "VLR Liquido", "VLR Bruto"];
+                        const rows = filteredData.map(p => [
+                          p.PED_IN_CODIGO,
+                          p.SER_ST_CODIGO === 'OV' ? 'Orçamento' : p.SER_ST_CODIGO === 'PD' ? 'Pedido' : 'Desenvolvimento',
+                          new Date(p.PED_DT_EMISSAO).toLocaleDateString('pt-BR'),
+                          p.CLI_IN_CODIGO,
+                          p.CLIENTE_NOME,
+                          p.REP_NOME || '',
+                          getStatusNome(p.PED_CH_SITUACAO),
+                          formatCurrency(p.PED_RE_VLMERCADORIA).replace(/\u00a0/g, ' '),
+                          formatCurrency(p.PED_RE_VALORTOTAL).replace(/\u00a0/g, ' ')
+                        ]);
+
+                        // Adiciona BOM (\ufeff) para o Excel reconhecer UTF-8 (acentos)
+                        let csvContent = "\ufeff" 
+                          + headers.join(";") + "\n"
+                          + rows.map(e => e.join(";")).join("\n");
+
+                        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement("a");
+                        link.setAttribute("href", url);
+                        link.setAttribute("download", `Exportacao_${activeTab}_${new Date().toISOString().split('T')[0]}.csv`);
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                      }}
+                      className="export-btn"
+                      style={{
+                        padding: '0.25rem 0.5rem',
+                        backgroundColor: '#10b981',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontWeight: '600',
+                        fontSize: '0.75rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}
+                    >
+                      Exportar Excel
+                    </button>
                   </div>
+                </div>
                   <OrdersTable pedidos={filteredData} />
                 </section>
               )}

@@ -31,13 +31,19 @@ async function getPedidos({ startDate, endDate, filial, status, representante })
              P.PED_IN_CODIGO,
              P.CLI_IN_CODIGO,
              A.AGN_ST_NOME AS CLIENTE_NOME,
+             A.AGN_ST_CGC AS CLIENTE_CNPJ,
              P.TPD_IN_CODIGO,
              P.PED_DT_EMISSAO,
              P.PED_CH_SITUACAO,
              P.REP_IN_CODIGO,
              R.AGN_ST_NOME AS REP_NOME,
              P.PED_RE_VLMERCADORIA,
-             P.PED_RE_VALORTOTAL
+             P.PED_RE_VALORTOTAL,
+             (SELECT MIN(IPE_DT_DATAENTREGA) 
+                FROM MEGA.VEN_PEDPROGENTREGA@AIR PE 
+               WHERE PE.ORG_IN_CODIGO = P.ORG_IN_CODIGO 
+                 AND PE.SER_ST_CODIGO = P.SER_ST_CODIGO 
+                 AND PE.PED_IN_CODIGO = P.PED_IN_CODIGO) AS PED_DT_ENTREGA
         FROM MEGA.VEN_PEDIDOVENDA@AIR P
    LEFT JOIN MEGA.GLO_AGENTES@AIR A 
           ON A.AGN_TAB_IN_CODIGO = P.CLI_TAB_IN_CODIGO

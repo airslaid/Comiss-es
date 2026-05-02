@@ -1,31 +1,134 @@
+import { useState } from 'react';
+
 const Sidebar = ({ activeTab, setActiveTab }) => {
+  const [crmExpanded, setCrmExpanded] = useState(true);
+
   const menuItems = [
-    { id: 'all', label: 'Visão Geral' },
-    { id: 'OV', label: 'Orçamentos' },
-    { id: 'PD', label: 'Pedidos' },
-    { id: 'DV', label: 'Desenvolvimentos' },
-    { id: 'METAS', label: 'Gestão de Metas' },
-    { id: 'RANKING', label: 'Meta x Realizado' },
+    { id: 'all', label: 'Visão Geral', icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="7" height="7"></rect>
+        <rect x="14" y="3" width="7" height="7"></rect>
+        <rect x="14" y="14" width="7" height="7"></rect>
+        <rect x="3" y="14" width="7" height="7"></rect>
+      </svg>
+    ) },
+    { 
+      id: 'CRM', 
+      label: 'CRM', 
+      isParent: true,
+      icon: (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+        </svg>
+      ),
+      subItems: [
+        { id: 'CRM_PIPELINE', label: 'Pipeline' },
+        { id: 'CRM_FOLLOWUP', label: 'Follow Up' },
+        { id: 'CRM_AGENDA', label: 'Agenda' },
+      ]
+    },
+    { id: 'OV', label: 'Orçamentos', icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+        <line x1="16" y1="13" x2="8" y2="13"></line>
+        <line x1="16" y1="17" x2="8" y2="17"></line>
+        <polyline points="10 9 9 9 8 9"></polyline>
+      </svg>
+    ) },
+    { id: 'PD', label: 'Pedidos', icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path>
+        <path d="M3 6h18"></path>
+        <path d="M16 10a4 4 0 0 1-8 0"></path>
+      </svg>
+    ) },
+    { id: 'DV', label: 'Desenvolvimentos', icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+      </svg>
+    ) },
+    { id: 'RANKING', label: 'Meta x Realizado', icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+        <polyline points="17 6 23 6 23 12"></polyline>
+      </svg>
+    ) },
+    { id: 'METAS', label: 'Gestão de Metas', icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <circle cx="12" cy="12" r="6"></circle>
+        <circle cx="12" cy="12" r="2"></circle>
+      </svg>
+    ) },
   ];
 
   return (
     <div className="sidebar">
-      <div className="sidebar-logo">
-        <span className="logo-text">MegaCRM</span>
+      <div className="sidebar-logo" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+        </svg>
+        <span className="logo-text" style={{ fontSize: '0.9rem', letterSpacing: '0.05em' }}>AIR SALES</span>
       </div>
       <nav className="sidebar-nav">
         {menuItems.map((item) => (
-          <button
-            key={item.id}
-            className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
-            onClick={() => setActiveTab(item.id)}
-          >
-            {item.label}
-          </button>
+          <div key={item.id}>
+            <button
+              className={`nav-item ${activeTab.startsWith('CRM') && item.id === 'CRM' ? 'active' : activeTab === item.id ? 'active' : ''}`}
+              onClick={() => {
+                if (item.isParent) {
+                  setCrmExpanded(!crmExpanded);
+                  if (!activeTab.startsWith('CRM')) setActiveTab('CRM_PIPELINE');
+                } else {
+                  setActiveTab(item.id);
+                }
+              }}
+              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <span className="nav-icon">{item.icon}</span>
+                {item.label}
+              </div>
+              {item.isParent && (
+                <svg 
+                  width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                  style={{ transform: crmExpanded ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s' }}
+                >
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              )}
+            </button>
+            
+            {item.isParent && crmExpanded && (
+              <div className="submenu" style={{ display: 'flex', flexDirection: 'column' }}>
+                {item.subItems.map(sub => (
+                  <button
+                    key={sub.id}
+                    className={`nav-item submenu-item ${activeTab === sub.id ? 'active' : ''}`}
+                    onClick={() => setActiveTab(sub.id)}
+                    style={{ 
+                      paddingLeft: '2.5rem', 
+                      background: activeTab === sub.id ? 'var(--sidebar-item-active)' : 'transparent',
+                      color: activeTab === sub.id ? '#ffffff' : '#64748b'
+                    }}
+                  >
+                    {sub.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         ))}
       </nav>
       <div className="sidebar-footer">
-        <p>v1.0.0</p>
+        <div className="user-info">
+          <span className="user-label">Usuário</span>
+          <div className="user-name">
+            <span className="status-dot"></span>
+            Patrick
+          </div>
+        </div>
       </div>
     </div>
   );
