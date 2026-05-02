@@ -269,8 +269,11 @@ const OrdersTable = ({ pedidos }) => {
             </tr>
           </thead>
           <tbody>
-            {currentRows.map((pedido) => (
-              <tr key={`${pedido.ORG_IN_CODIGO}-${pedido.SER_ST_CODIGO}-${pedido.PED_IN_CODIGO}`}>
+            {currentRows.map((pedido, index) => (
+              <tr 
+                key={`${pedido.ORG_IN_CODIGO}-${pedido.SER_ST_CODIGO}-${pedido.PED_IN_CODIGO}`}
+                style={{ backgroundColor: index % 2 !== 0 ? '#f1f5f9' : 'transparent' }}
+              >
                 <td style={{ padding: '0.45rem 0.5rem', borderBottom: '1px solid var(--panel-border)', width: widths.pedido, overflow: 'hidden', textAlign: 'center' }}>
                   <button
                     onClick={() => handleOpenItens(pedido)}
