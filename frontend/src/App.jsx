@@ -5,6 +5,8 @@ import OrdersTable from './components/OrdersTable';
 import MetasManager from './components/MetasManager';
 import RankingMetas from './components/RankingMetas';
 import PipelineCRM from './components/PipelineCRM';
+import FollowUpList from './components/FollowUpList';
+import './App.css';
 
 function App() {
   // Datas padrão: Mês Atual
@@ -247,10 +249,7 @@ function App() {
           ) : activeTab === 'CRM_PIPELINE' ? (
             <PipelineCRM pedidos={pedidos} />
           ) : activeTab === 'CRM_FOLLOWUP' ? (
-            <div style={{ padding: '2rem', textAlign: 'center', backgroundColor: 'var(--panel-bg)', borderRadius: '8px', border: '1px solid var(--panel-border)' }}>
-              <h2 style={{ color: 'var(--text-main)' }}>Módulo Follow Up</h2>
-              <p style={{ color: 'var(--text-muted)' }}>Gerenciamento de retornos e acompanhamento de clientes em desenvolvimento.</p>
-            </div>
+            <FollowUpList />
           ) : activeTab === 'CRM_AGENDA' ? (
             <div style={{ padding: '2rem', textAlign: 'center', backgroundColor: 'var(--panel-bg)', borderRadius: '8px', border: '1px solid var(--panel-border)' }}>
               <h2 style={{ color: 'var(--text-main)' }}>Módulo Agenda</h2>

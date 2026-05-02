@@ -15,7 +15,7 @@ try {
 // Configuração para evitar erro de truncamento de fetch em dados maiores (DPI-1037/ORA-01406)
 oracledb.fetchAsString = [oracledb.CLOB];
 
-async function getPedidos({ startDate, endDate, filial, status, representante }) {
+async function getPedidos({ startDate, endDate, filial, status, representante, ids }) {
   let connection;
   try {
     connection = await oracledb.getConnection({
@@ -56,6 +56,16 @@ async function getPedidos({ startDate, endDate, filial, status, representante })
     `;
 
     const binds = {};
+
+    if (ids && Array.isArray(ids) && ids.length > 0) {
+      // Filtrar por uma lista de códigos de pedido
+      // Como o Oracle tem limite de 1000 elementos no IN, vamos ser cuidadosos, mas aqui deve ser de boa
+      const idPlaceholders = ids.map((id, index) => `:id${index}`).join(', ');
+      sql += ` AND P.PED_IN_CODIGO IN (${idPlaceholders})`;
+      ids.forEach((id, index) => {
+        binds[`id${index}`] = parseInt(id, 10);
+      });
+    }
 
     if (filial && filial !== 'ALL') {
       sql += ` AND P.FIL_IN_CODIGO = :filial`;

@@ -143,6 +143,117 @@ app.get('/api/pedidos/:org/:ser/:ped/itens', async (req, res) => {
   }
 });
 
+// --- CRM Follow Up ---
+app.get('/api/crm/followup/:org/:ser/:ped', async (req, res) => {
+  try {
+    const { org, ser, ped } = req.params;
+    const { data, error } = await supabase
+      .from('crm_followup')
+      .select('*')
+      .eq('org_in_codigo', parseInt(org))
+      .eq('ser_st_codigo', ser)
+      .eq('ped_in_codigo', parseInt(ped))
+      .order('data_contato', { ascending: false });
+
+    if (error) throw error;
+    res.json(data || []);
+  } catch (error) {
+    console.error("Erro na rota GET /api/crm/followup:", error);
+    res.status(500).json({ error: "Erro ao buscar follow ups." });
+  }
+});
+
+app.post('/api/crm/followup', async (req, res) => {
+  try {
+    const { org_in_codigo, ser_st_codigo, ped_in_codigo, tipo, descricao } = req.body;
+    const { data, error } = await supabase
+      .from('crm_followup')
+      .insert([{ 
+        org_in_codigo: parseInt(org_in_codigo), 
+        ser_st_codigo, 
+        ped_in_codigo: parseInt(ped_in_codigo), 
+        tipo, 
+        descricao,
+        data_contato: new Date()
+      }]);
+
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Erro na rota POST /api/crm/followup:", error);
+    res.status(500).json({ error: "Erro ao salvar follow up." });
+  }
+});
+
+app.put('/api/crm/followup/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { tipo, descricao } = req.body;
+    const { error } = await supabase
+      .from('crm_followup')
+      .update({ tipo, descricao })
+      .eq('id', id);
+
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Erro na rota PUT /api/crm/followup:", error);
+    res.status(500).json({ error: "Erro ao editar follow up." });
+  }
+});
+
+app.delete('/api/crm/followup/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { error } = await supabase
+      .from('crm_followup')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Erro na rota DELETE /api/crm/followup:", error);
+    res.status(500).json({ error: "Erro ao excluir follow up." });
+  }
+});
+
+app.get('/api/crm/followup/all', async (req, res) => {
+  try {
+    // 1. Buscar todos os follow ups do Supabase
+    const { data: followUps, error } = await supabase
+      .from('crm_followup')
+      .select('*')
+      .order('data_contato', { ascending: false });
+
+    if (error) throw error;
+    if (!followUps || followUps.length === 0) return res.json([]);
+
+    // 2. Extrair códigos de pedidos únicos para buscar detalhes no Oracle
+    const uniquePedIds = [...new Set(followUps.map(f => f.ped_in_codigo))];
+
+    // 3. Buscar detalhes dos pedidos no Oracle
+    const { getPedidos } = require('./db');
+    const pedidosInfo = await getPedidos({ ids: uniquePedIds });
+
+    // 4. Mapear as informações do Oracle para os follow ups
+    const result = followUps.map(f => {
+      const info = pedidosInfo.find(p => p.PED_IN_CODIGO === f.ped_in_codigo);
+      return {
+        ...f,
+        CLIENTE_NOME: info ? info.CLIENTE_NOME : 'Não encontrado',
+        REP_NOME: info ? info.REP_NOME : 'N/A',
+        SER_ST_CODIGO: info ? info.SER_ST_CODIGO : f.ser_st_codigo
+      };
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error("Erro na rota GET /api/crm/followup/all:", error);
+    res.status(500).json({ error: "Erro ao buscar histórico de follow ups." });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });

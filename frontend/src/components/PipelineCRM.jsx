@@ -22,6 +22,11 @@ const PipelineCRM = ({ pedidos }) => {
   const [selectedPedido, setSelectedPedido] = useState(null);
   const [items, setItems] = useState([]);
   const [loadingItems, setLoadingItems] = useState(false);
+  const [modalTab, setModalTab] = useState('itens'); // 'itens' ou 'followup'
+  const [followUps, setFollowUps] = useState([]);
+  const [newFollowUp, setNewFollowUp] = useState({ tipo: 'E-MAIL', descricao: '' });
+  const [savingFollowUp, setSavingFollowUp] = useState(false);
+  const [editingFollowUp, setEditingFollowUp] = useState(null);
 
   const fetchPipeline = async () => {
     try {
@@ -40,17 +45,100 @@ const PipelineCRM = ({ pedidos }) => {
   const fetchItems = async (p) => {
     setLoadingItems(true);
     setSelectedPedido(p);
+    setModalTab('itens');
+    setEditingFollowUp(null);
+    setNewFollowUp({ tipo: 'E-MAIL', descricao: '' });
     try {
       const response = await fetch(`http://localhost:3001/api/pedidos/${p.ORG_IN_CODIGO}/${p.SER_ST_CODIGO}/${p.PED_IN_CODIGO}/itens`);
       if (response.ok) {
         const data = await response.json();
         setItems(data);
       }
+      fetchFollowUps(p);
     } catch (err) {
       console.error("Erro ao buscar itens:", err);
     } finally {
       setLoadingItems(false);
     }
+  };
+
+  const fetchFollowUps = async (p) => {
+    try {
+      const response = await fetch(`http://localhost:3001/api/crm/followup/${p.ORG_IN_CODIGO}/${p.SER_ST_CODIGO}/${p.PED_IN_CODIGO}`);
+      if (response.ok) {
+        const data = await response.json();
+        setFollowUps(data);
+      }
+    } catch (err) {
+      console.error("Erro ao buscar follow ups:", err);
+    }
+  };
+
+  const saveFollowUp = async () => {
+    if (!newFollowUp.descricao.trim()) return;
+    setSavingFollowUp(true);
+    try {
+      const url = editingFollowUp 
+        ? `http://localhost:3001/api/crm/followup/${editingFollowUp.id}`
+        : 'http://localhost:3001/api/crm/followup';
+      
+      const method = editingFollowUp ? 'PUT' : 'POST';
+      
+      const body = editingFollowUp 
+        ? { tipo: newFollowUp.tipo, descricao: newFollowUp.descricao }
+        : {
+            org_in_codigo: selectedPedido.ORG_IN_CODIGO,
+            ser_st_codigo: selectedPedido.SER_ST_CODIGO,
+            ped_in_codigo: selectedPedido.PED_IN_CODIGO,
+            tipo: newFollowUp.tipo,
+            descricao: newFollowUp.descricao
+          };
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      
+      if (response.ok) {
+        setNewFollowUp({ tipo: 'E-MAIL', descricao: '' });
+        setEditingFollowUp(null);
+        fetchFollowUps(selectedPedido);
+      }
+    } catch (err) {
+      console.error("Erro ao salvar follow up:", err);
+    } finally {
+      setSavingFollowUp(false);
+    }
+  };
+
+  const [deleteConfirmation, setDeleteConfirmation] = useState(null); // ID do follow up a ser excluído
+
+  const deleteFollowUp = async () => {
+    if (!deleteConfirmation) return;
+    try {
+      const response = await fetch(`http://localhost:3001/api/crm/followup/${deleteConfirmation}`, {
+        method: 'DELETE'
+      });
+      if (response.ok) {
+        setDeleteConfirmation(null);
+        fetchFollowUps(selectedPedido);
+      }
+    } catch (err) {
+      console.error("Erro ao excluir follow up:", err);
+    }
+  };
+
+  const startEdit = (f) => {
+    setEditingFollowUp(f);
+    setNewFollowUp({ tipo: f.tipo, descricao: f.descricao });
+    // Scroll para o formulário
+    document.querySelector('.followup-form')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const cancelEdit = () => {
+    setEditingFollowUp(null);
+    setNewFollowUp({ tipo: 'E-MAIL', descricao: '' });
   };
 
   useEffect(() => {
@@ -113,6 +201,16 @@ const PipelineCRM = ({ pedidos }) => {
   }, [orcamentos, pipelineData]);
 
   const formatCurrency = (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+
+  const getFollowUpIcon = (tipo) => {
+    switch(tipo) {
+      case 'E-MAIL': return '📧';
+      case 'VISITA': return '🚗';
+      case 'TELEFONEMA': return '📞';
+      case 'WHATSAPP': return '💬';
+      default: return '📎';
+    }
+  };
 
   if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Carregando CRM...</div>;
 
@@ -224,6 +322,9 @@ const PipelineCRM = ({ pedidos }) => {
                   <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: '500' }}>
                     CNPJ: {p.CLIENTE_CNPJ || 'N/A'}
                   </div>
+                  <div style={{ fontSize: '0.6rem', color: 'var(--accent-color)', fontWeight: '600', marginTop: '0.2rem' }}>
+                    REP: {p.REP_NOME}
+                  </div>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '0.85rem', fontWeight: '800', color: '#059669' }}>{formatCurrency(p.PED_RE_VLMERCADORIA)}</span>
@@ -254,7 +355,7 @@ const PipelineCRM = ({ pedidos }) => {
             backgroundColor: '#ffffff',
             width: '900px',
             maxWidth: '95vw',
-            maxHeight: '85vh',
+            height: '85vh',
             borderRadius: '12px',
             display: 'flex',
             flexDirection: 'column',
@@ -265,7 +366,7 @@ const PipelineCRM = ({ pedidos }) => {
             
             {/* Header do Modal */}
             <div style={{ 
-              padding: '1.5rem', 
+              padding: '1.25rem 1.5rem', 
               background: 'linear-gradient(to right, #f8fafc, #ffffff)',
               borderBottom: '1px solid #e2e8f0', 
               display: 'flex', 
@@ -291,9 +392,6 @@ const PipelineCRM = ({ pedidos }) => {
                 <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: '600', color: '#64748b' }}>
                   {selectedPedido.CLIENTE_NOME}
                 </p>
-                <p style={{ margin: 0, fontSize: '0.7rem', color: '#94a3b8' }}>
-                  CNPJ: {selectedPedido.CLIENTE_CNPJ} • Emissão: {new Date(selectedPedido.PED_DT_EMISSAO).toLocaleDateString('pt-BR')}
-                </p>
               </div>
               <button 
                 onClick={() => setSelectedPedido(null)}
@@ -310,93 +408,274 @@ const PipelineCRM = ({ pedidos }) => {
                   color: '#64748b',
                   transition: 'all 0.2s'
                 }}
-                onMouseOver={(e) => e.target.style.backgroundColor = '#e2e8f0'}
-                onMouseOut={(e) => e.target.style.backgroundColor = '#f1f5f9'}
               >×</button>
             </div>
+
+            {/* Abas */}
+            <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
+              <button 
+                onClick={() => setModalTab('itens')}
+                style={{
+                  padding: '1rem 1.5rem',
+                  fontSize: '0.75rem',
+                  fontWeight: '700',
+                  border: 'none',
+                  background: 'transparent',
+                  borderBottom: modalTab === 'itens' ? '2px solid var(--accent-color)' : '2px solid transparent',
+                  color: modalTab === 'itens' ? 'var(--accent-color)' : '#64748b',
+                  cursor: 'pointer'
+                }}
+              >ITENS DO ORÇAMENTO</button>
+              <button 
+                onClick={() => setModalTab('followup')}
+                style={{
+                  padding: '1rem 1.5rem',
+                  fontSize: '0.75rem',
+                  fontWeight: '700',
+                  border: 'none',
+                  background: 'transparent',
+                  borderBottom: modalTab === 'followup' ? '2px solid var(--accent-color)' : '2px solid transparent',
+                  color: modalTab === 'followup' ? 'var(--accent-color)' : '#64748b',
+                  cursor: 'pointer'
+                }}
+              >FOLLOW UP / APONTAMENTOS</button>
+            </div>
             
-            {/* Conteúdo / Tabela */}
+            {/* Conteúdo das Abas */}
             <div style={{ padding: '0', overflowY: 'auto', flex: 1 }}>
-              {loadingItems ? (
-                <div style={{ textAlign: 'center', padding: '4rem', color: '#64748b' }}>
-                  <div className="loading-spinner" style={{ marginBottom: '1rem' }}>⌛</div>
-                  Carregando itens do orçamento...
-                </div>
+              {modalTab === 'itens' ? (
+                <>
+                  {loadingItems ? (
+                    <div style={{ textAlign: 'center', padding: '4rem', color: '#64748b' }}>
+                      Carregando itens...
+                    </div>
+                  ) : (
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ backgroundColor: '#f8fafc', textAlign: 'left', position: 'sticky', top: 0, zIndex: 1 }}>
+                          <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.7rem', fontWeight: '700', color: '#475569', textTransform: 'uppercase' }}>Item</th>
+                          <th style={{ padding: '0.75rem 1rem', fontSize: '0.7rem', fontWeight: '700', color: '#475569', textTransform: 'uppercase' }}>Descrição</th>
+                          <th style={{ padding: '0.75rem 1rem', fontSize: '0.7rem', fontWeight: '700', color: '#475569', textTransform: 'uppercase', textAlign: 'center' }}>Qtd</th>
+                          <th style={{ padding: '0.75rem 1rem', fontSize: '0.7rem', fontWeight: '700', color: '#475569', textTransform: 'uppercase', textAlign: 'right' }}>Vlr. Unit</th>
+                          <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.7rem', fontWeight: '700', color: '#475569', textTransform: 'uppercase', textAlign: 'right' }}>Subtotal</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {items.map((item, idx) => (
+                          <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <td style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '700' }}>{item.PRODUTO_COD_ALT || item.PRODUTO_COD}</td>
+                            <td style={{ padding: '0.75rem 1rem' }}>
+                              <div style={{ fontSize: '0.75rem', fontWeight: '600' }}>{item.DESCRICAO}</div>
+                            </td>
+                            <td style={{ padding: '0.75rem 1rem', fontSize: '0.75rem', textAlign: 'center' }}>{item.QUANTIDADE} {item.UNIDADE}</td>
+                            <td style={{ padding: '0.75rem 1rem', fontSize: '0.75rem', textAlign: 'right' }}>{formatCurrency(item.VALOR_UNITARIO)}</td>
+                            <td style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', textAlign: 'right', fontWeight: '700' }}>{formatCurrency(item.VALOR_TOTAL)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </>
               ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ backgroundColor: '#f8fafc', textAlign: 'left', position: 'sticky', top: 0, zIndex: 1 }}>
-                      <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.7rem', fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Item</th>
-                      <th style={{ padding: '0.75rem 1rem', fontSize: '0.7rem', fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Descrição do Produto</th>
-                      <th style={{ padding: '0.75rem 1rem', fontSize: '0.7rem', fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'center' }}>Qtd</th>
-                      <th style={{ padding: '0.75rem 1rem', fontSize: '0.7rem', fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right' }}>Vlr. Unitário</th>
-                      <th style={{ padding: '0.75rem 1.5rem', fontSize: '0.7rem', fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right' }}>Subtotal</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {items.map((item, idx) => (
-                      <tr key={idx} style={{ 
-                        borderBottom: '1px solid #f1f5f9',
-                        transition: 'background-color 0.2s'
-                      }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
-                         onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
-                        <td style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem', fontWeight: '700', color: '#334155' }}>
-                          {item.PRODUTO_COD_ALT || item.PRODUTO_COD}
-                        </td>
-                        <td style={{ padding: '0.75rem 1rem' }}>
-                          <div style={{ fontSize: '0.75rem', fontWeight: '600', color: '#1e293b' }}>{item.DESCRICAO}</div>
-                          {item.COMPLEMENTO && (
-                            <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginTop: '0.1rem' }}>{item.COMPLEMENTO}</div>
-                          )}
-                        </td>
-                        <td style={{ padding: '0.75rem 1rem', fontSize: '0.75rem', textAlign: 'center', color: '#475569', fontWeight: '600' }}>
-                          {item.QUANTIDADE} <span style={{ fontSize: '0.6rem', color: '#94a3b8' }}>{item.UNIDADE}</span>
-                        </td>
-                        <td style={{ padding: '0.75rem 1rem', fontSize: '0.75rem', textAlign: 'right', color: '#475569' }}>
-                          {formatCurrency(item.VALOR_UNITARIO)}
-                        </td>
-                        <td style={{ padding: '0.75rem 1.5rem', fontSize: '0.8rem', textAlign: 'right', fontWeight: '700', color: '#1e293b' }}>
-                          {formatCurrency(item.VALOR_TOTAL)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <div style={{ padding: '1.5rem' }}>
+                  {/* Formulário de Novo Follow Up */}
+                  <div className="followup-form" style={{ 
+                    backgroundColor: '#f8fafc', 
+                    padding: '1.25rem', 
+                    borderRadius: '8px', 
+                    border: '1px solid #e2e8f0',
+                    marginBottom: '1.5rem',
+                    boxShadow: editingFollowUp ? '0 0 0 2px var(--accent-color)' : 'none',
+                    transition: 'all 0.2s'
+                  }}>
+                    <h3 style={{ fontSize: '0.8rem', fontWeight: '800', marginBottom: '1rem', color: '#1e293b' }}>
+                      {editingFollowUp ? 'EDITAR APONTAMENTO' : 'NOVO APONTAMENTO'}
+                    </h3>
+                    <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+                      <div style={{ flex: '0 0 200px' }}>
+                        <label style={{ display: 'block', fontSize: '0.65rem', fontWeight: '700', color: '#64748b', marginBottom: '0.4rem' }}>TIPO</label>
+                        <select 
+                          value={newFollowUp.tipo}
+                          onChange={(e) => setNewFollowUp({ ...newFollowUp, tipo: e.target.value })}
+                          style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', fontSize: '0.75rem' }}
+                        >
+                          <option value="E-MAIL">E-MAIL</option>
+                          <option value="VISITA">VISITA</option>
+                          <option value="TELEFONEMA">TELEFONEMA</option>
+                          <option value="WHATSAPP">WHATSAPP</option>
+                        </select>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <label style={{ display: 'block', fontSize: '0.65rem', fontWeight: '700', color: '#64748b', marginBottom: '0.4rem' }}>DESCRIÇÃO / OBSERVAÇÃO</label>
+                        <textarea 
+                          value={newFollowUp.descricao}
+                          onChange={(e) => setNewFollowUp({ ...newFollowUp, descricao: e.target.value })}
+                          placeholder="Descreva o que foi conversado ou o próximo passo..."
+                          style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', fontSize: '0.75rem', minHeight: '80px', resize: 'vertical' }}
+                        />
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                      {editingFollowUp && (
+                        <button 
+                          onClick={cancelEdit}
+                          style={{
+                            backgroundColor: '#e2e8f0',
+                            color: '#475569',
+                            border: 'none',
+                            padding: '0.6rem 1.5rem',
+                            borderRadius: '4px',
+                            fontSize: '0.75rem',
+                            fontWeight: '700',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          CANCELAR
+                        </button>
+                      )}
+                      <button 
+                        onClick={saveFollowUp}
+                        disabled={savingFollowUp || !newFollowUp.descricao.trim()}
+                        style={{
+                          backgroundColor: 'var(--accent-color)',
+                          color: 'white',
+                          border: 'none',
+                          padding: '0.6rem 1.5rem',
+                          borderRadius: '4px',
+                          fontSize: '0.75rem',
+                          fontWeight: '700',
+                          cursor: 'pointer',
+                          opacity: (savingFollowUp || !newFollowUp.descricao.trim()) ? 0.6 : 1
+                        }}
+                      >
+                        {savingFollowUp ? 'SALVANDO...' : (editingFollowUp ? 'SALVAR ALTERAÇÕES' : 'REGISTRAR APONTAMENTO')}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Lista de Histórico */}
+                  <div className="followup-history">
+                    <h3 style={{ fontSize: '0.8rem', fontWeight: '800', marginBottom: '1rem', color: '#1e293b' }}>HISTÓRICO DE CONTATOS</h3>
+                    {followUps.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8', fontSize: '0.8rem', fontStyle: 'italic' }}>
+                        Nenhum follow up registrado para este orçamento.
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {followUps.map((f, idx) => (
+                          <div key={f.id || idx} style={{ 
+                            padding: '1rem', 
+                            backgroundColor: '#ffffff', 
+                            borderRadius: '6px', 
+                            border: '1px solid #e2e8f0',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+                            position: 'relative'
+                          }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <span style={{ fontSize: '1.1rem' }}>{getFollowUpIcon(f.tipo)}</span>
+                                <span style={{ fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase', color: 'var(--accent-color)' }}>{f.tipo}</span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                <span style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: '600' }}>
+                                  {new Date(f.data_contato).toLocaleString('pt-BR')}
+                                </span>
+                                <div style={{ display: 'flex', gap: '0.4rem' }}>
+                                  <button 
+                                    onClick={() => startEdit(f)}
+                                    title="Editar"
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8rem', color: '#3b82f6', padding: '0.2rem' }}
+                                  >✏️</button>
+                                  <button 
+                                    onClick={() => setDeleteConfirmation(f.id)}
+                                    title="Excluir"
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8rem', color: '#ef4444', padding: '0.2rem' }}
+                                  >🗑️</button>
+                                </div>
+                              </div>
+                            </div>
+                            <div style={{ fontSize: '0.8rem', color: '#334155', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
+                              {f.descricao}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
             
-            {/* Footer / Resumo */}
-            <div style={{ 
-              padding: '1.25rem 1.5rem', 
-              borderTop: '1px solid #e2e8f0', 
-              backgroundColor: '#ffffff', 
-              display: 'flex', 
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <div style={{ display: 'flex', gap: '2rem' }}>
-                <div>
-                  <div style={{ fontSize: '0.6rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: '700' }}>Total de Itens</div>
-                  <div style={{ fontSize: '0.9rem', fontWeight: '800', color: '#1e293b' }}>{items.length}</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: '0.6rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: '700' }}>Peso Total Est.</div>
-                  <div style={{ fontSize: '0.9rem', fontWeight: '800', color: '#1e293b' }}>--</div>
-                </div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', marginRight: '1rem' }}>VALOR LÍQUIDO (MERCADORIA)</span>
-                <span style={{ 
-                  fontSize: '1.4rem', 
-                  fontWeight: '900', 
-                  color: '#059669',
-                  backgroundColor: '#ecfdf5',
-                  padding: '0.4rem 0.8rem',
-                  borderRadius: '6px'
-                }}>
+            {/* Footer */}
+            <div style={{ padding: '1.25rem 1.5rem', borderTop: '1px solid #e2e8f0', backgroundColor: '#ffffff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ textAlign: 'right', width: '100%' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', marginRight: '1rem' }}>VALOR LÍQUIDO</span>
+                <span style={{ fontSize: '1.2rem', fontWeight: '900', color: '#059669', backgroundColor: '#ecfdf5', padding: '0.4rem 0.8rem', borderRadius: '6px' }}>
                   {formatCurrency(selectedPedido.PED_RE_VLMERCADORIA)}
                 </span>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmação de Exclusão Customizado */}
+      {deleteConfirmation && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.4)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 2000,
+          backdropFilter: 'blur(2px)'
+        }}>
+          <div style={{
+            backgroundColor: '#ffffff',
+            padding: '1.5rem',
+            borderRadius: '12px',
+            width: '350px',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⚠️</div>
+            <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: '800', color: '#1e293b' }}>Confirmar Exclusão</h3>
+            <p style={{ margin: '0 0 1.5rem 0', fontSize: '0.8rem', color: '#64748b' }}>
+              Tem certeza que deseja remover este apontamento? Esta ação não pode ser desfeita.
+            </p>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button 
+                onClick={() => setDeleteConfirmation(null)}
+                style={{
+                  flex: 1,
+                  padding: '0.6rem',
+                  borderRadius: '6px',
+                  border: '1px solid #e2e8f0',
+                  backgroundColor: '#ffffff',
+                  color: '#64748b',
+                  fontSize: '0.75rem',
+                  fontWeight: '700',
+                  cursor: 'pointer'
+                }}
+              >CANCELAR</button>
+              <button 
+                onClick={deleteFollowUp}
+                style={{
+                  flex: 1,
+                  padding: '0.6rem',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: '#ef4444',
+                  color: '#ffffff',
+                  fontSize: '0.75rem',
+                  fontWeight: '700',
+                  cursor: 'pointer'
+                }}
+              >EXCLUIR</button>
             </div>
           </div>
         </div>
