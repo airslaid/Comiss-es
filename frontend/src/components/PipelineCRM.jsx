@@ -117,19 +117,30 @@ const PipelineCRM = ({ pedidos }) => {
   if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Carregando CRM...</div>;
 
   return (
-    <div className="crm-pipeline" style={{ display: 'flex', gap: '0.5rem', height: 'calc(100vh - 120px)', paddingBottom: '1rem', alignItems: 'stretch' }}>
+    <div className="crm-pipeline" style={{ 
+      display: 'flex', 
+      gap: '0.75rem', 
+      height: 'calc(100vh - 120px)', 
+      paddingBottom: '1rem', 
+      alignItems: 'stretch',
+      overflowX: 'auto',
+      scrollBehavior: 'smooth',
+      paddingRight: '1rem'
+    }}>
       {STAGES.map(stage => (
         <div 
           key={stage} 
           className="pipeline-column" 
           style={{ 
-            flex: 1,
-            minWidth: '160px',
+            flex: '0 0 290px', // Conforto visual máximo
+            minWidth: 0,
+            overflow: 'hidden',
             backgroundColor: '#f8fafc', 
             borderRadius: '4px', 
             display: 'flex', 
             flexDirection: 'column',
-            border: '1px solid #e2e8f0'
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
           }}
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => {
@@ -156,11 +167,20 @@ const PipelineCRM = ({ pedidos }) => {
               </span>
             </div>
             <div style={{ fontSize: '0.65rem', fontWeight: '800', color: STAGE_COLORS[stage] }}>
-              {formatCurrency(groupedOrcamentos[stage].reduce((acc, curr) => acc + curr.PED_RE_VALORTOTAL, 0))}
+              {formatCurrency(groupedOrcamentos[stage].reduce((acc, curr) => acc + curr.PED_RE_VLMERCADORIA, 0))}
             </div>
           </div>
 
-          <div style={{ padding: '0.4rem', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+          <div style={{ 
+            padding: '0.4rem', 
+            overflowY: 'auto', 
+            overflowX: 'hidden',
+            flex: 1, 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '0.4rem',
+            minWidth: 0
+          }}>
             {groupedOrcamentos[stage].map(p => (
               <div 
                 key={`${p.ORG_IN_CODIGO}-${p.PED_IN_CODIGO}`} 
@@ -171,23 +191,25 @@ const PipelineCRM = ({ pedidos }) => {
                 onClick={() => fetchItems(p)}
                 style={{
                   backgroundColor: '#ffffff',
-                  padding: '1rem',
+                  padding: '0.6rem', // Reduzido para caber melhor
                   borderRadius: '4px',
                   border: '1px solid #e2e8f0',
                   boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
                   cursor: (stage !== 'FECHADO (GANHO)' && stage !== 'CANCELADO') ? 'grab' : 'pointer',
                   opacity: (stage === 'FECHADO (GANHO)' || stage === 'CANCELADO') ? 0.8 : 1,
-                  minHeight: '130px',
+                  minHeight: '110px',
                   display: 'flex',
                   flexDirection: 'column',
-                  justifyContent: 'space-between'
+                  justifyContent: 'space-between',
+                  minWidth: 0,
+                  overflow: 'hidden'
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
-                  <span style={{ fontSize: '0.7rem', fontWeight: '700', color: 'var(--accent-color)' }}>#{p.PED_IN_CODIGO}</span>
-                  <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{new Date(p.PED_DT_EMISSAO).toLocaleDateString('pt-BR')}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem', minWidth: 0, overflow: 'hidden' }}>
+                  <span style={{ fontSize: '0.7rem', fontWeight: '700', color: 'var(--accent-color)', whiteSpace: 'nowrap' }}>#{p.PED_IN_CODIGO}</span>
+                  <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{new Date(p.PED_DT_EMISSAO).toLocaleDateString('pt-BR')}</span>
                 </div>
-                <div style={{ marginBottom: '0.6rem' }}>
+                <div style={{ marginBottom: '0.4rem', minWidth: 0, overflow: 'hidden' }}>
                   <div style={{ 
                     fontSize: '0.75rem', 
                     fontWeight: '700', 
@@ -195,7 +217,7 @@ const PipelineCRM = ({ pedidos }) => {
                     whiteSpace: 'nowrap',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
-                    marginBottom: '0.2rem'
+                    marginBottom: '0.1rem'
                   }}>
                     {p.CLIENTE_NOME}
                   </div>
@@ -204,7 +226,7 @@ const PipelineCRM = ({ pedidos }) => {
                   </div>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.85rem', fontWeight: '800', color: '#059669' }}>{formatCurrency(p.PED_RE_VALORTOTAL)}</span>
+                  <span style={{ fontSize: '0.85rem', fontWeight: '800', color: '#059669' }}>{formatCurrency(p.PED_RE_VLMERCADORIA)}</span>
                 </div>
               </div>
             ))}
@@ -363,7 +385,7 @@ const PipelineCRM = ({ pedidos }) => {
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', marginRight: '1rem' }}>VALOR TOTAL DO ORÇAMENTO</span>
+                <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', marginRight: '1rem' }}>VALOR LÍQUIDO (MERCADORIA)</span>
                 <span style={{ 
                   fontSize: '1.4rem', 
                   fontWeight: '900', 
@@ -372,7 +394,7 @@ const PipelineCRM = ({ pedidos }) => {
                   padding: '0.4rem 0.8rem',
                   borderRadius: '6px'
                 }}>
-                  {formatCurrency(selectedPedido.PED_RE_VALORTOTAL)}
+                  {formatCurrency(selectedPedido.PED_RE_VLMERCADORIA)}
                 </span>
               </div>
             </div>

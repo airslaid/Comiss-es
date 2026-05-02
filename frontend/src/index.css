@@ -73,6 +73,9 @@ body {
 .sidebar-nav {
   padding: 0.75rem 0;
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px; /* Espaçamento entre os botões */
 }
 
 .nav-item {
@@ -81,7 +84,7 @@ body {
   align-items: center;
   gap: 0.75rem;
   padding: 0 1rem;
-  height: 32px; /* Altura fixa para padronização total */
+  height: 38px; /* Aumentado de 32px para 38px para melhor respiro */
   background: none;
   border: none;
   color: #4b5563;

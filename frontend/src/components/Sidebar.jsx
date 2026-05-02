@@ -109,8 +109,9 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
                     onClick={() => setActiveTab(sub.id)}
                     style={{ 
                       paddingLeft: '2.5rem', 
-                      background: activeTab === sub.id ? 'var(--sidebar-item-active)' : 'transparent',
-                      color: activeTab === sub.id ? '#ffffff' : '#64748b'
+                      background: activeTab === sub.id ? '#f1f5f9' : 'transparent', // Cinza azulado bem claro
+                      color: activeTab === sub.id ? '#1e293b' : '#64748b',
+                      fontWeight: activeTab === sub.id ? '700' : '600'
                     }}
                   >
                     {sub.label}

@@ -116,75 +116,129 @@ function App() {
   if (atingimento >= 40 && atingimento < 100) progressColor = '#f59e0b'; // Amarelo (40% até 99.9%)
   if (atingimento >= 100) progressColor = '#10b981'; // Verde (100% ou mais)
 
+  const [showFilters, setShowFilters] = useState(false);
+
   return (
     <>
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
       
       <main className="main-content">
         <div className="dashboard-container">
-          <header className="dashboard-header">
+          <header className="dashboard-header" style={{ marginBottom: showFilters ? '1rem' : '2rem' }}>
             <div className="header-title">
-              <h1>
-                {activeTab === 'all' && 'Visão Geral das Vendas'}
-                {activeTab === 'OV' && 'Orçamentos'}
-                {activeTab === 'PD' && 'Pedidos'}
-                {activeTab === 'CRM_PIPELINE' && 'CRM: Pipeline de Orçamentos'}
-                {activeTab === 'CRM_FOLLOWUP' && 'CRM: Follow Up'}
-                {activeTab === 'CRM_AGENDA' && 'CRM: Agenda'}
-                {activeTab === 'DV' && 'Desenvolvimentos'}
-                {activeTab === 'METAS' && 'Gestão de Metas'}
-                {activeTab === 'RANKING' && 'Ranking: Meta x Realizado'}
-              </h1>
-              <p>Gerenciamento e acompanhamento de vendas Mega ERP</p>
-            </div>
-
-            {activeTab !== 'METAS' && (
-              <div className="filters-bar">
-                <div className="filter-group">
-                  <label>Filial</label>
-                  <select value={filial} onChange={(e) => setFilial(e.target.value)}>
-                    <option value="ALL">Todas</option>
-                    <option value="100">AIRSLAID (100)</option>
-                    <option value="200">BIG TELAS (200)</option>
-                  </select>
-                </div>
-                <div className="filter-group">
-                  <label>Status</label>
-                  <select value={status} onChange={(e) => setStatus(e.target.value)}>
-                    <option value="ALL">Todos</option>
-                    <option value="AP">Em Aberto</option>
-                    {activeTab !== 'PD' && <option value="B">Em Aprovação</option>}
-                    {activeTab !== 'OV' && <option value="F">Faturado</option>}
-                    <option value="C">Cancelado</option>
-                    {activeTab !== 'PD' && <option value="E">Encerrado</option>}
-                  </select>
-                </div>
-                <div className="filter-group">
-                  <label>Representante</label>
-                  <select 
-                    value={representante} 
-                    onChange={(e) => setRepresentante(e.target.value)}
-                    style={{ width: '220px' }}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <h1>
+                  {activeTab === 'all' && 'Visão Geral das Vendas'}
+                  {activeTab === 'OV' && 'Orçamentos'}
+                  {activeTab === 'PD' && 'Pedidos'}
+                  {activeTab === 'CRM_PIPELINE' && 'CRM: Pipeline de Orçamentos'}
+                  {activeTab === 'CRM_FOLLOWUP' && 'CRM: Follow Up'}
+                  {activeTab === 'CRM_AGENDA' && 'CRM: Agenda'}
+                  {activeTab === 'DV' && 'Desenvolvimentos'}
+                  {activeTab === 'METAS' && 'Gestão de Metas'}
+                  {activeTab === 'RANKING' && 'Ranking: Meta x Realizado'}
+                </h1>
+                {activeTab !== 'METAS' && (
+                  <button 
+                    onClick={() => setShowFilters(!showFilters)}
+                    style={{
+                      background: showFilters ? '#1e293b' : '#ffffff',
+                      color: showFilters ? '#ffffff' : '#64748b',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '6px',
+                      padding: '0.4rem 0.8rem',
+                      fontSize: '0.7rem',
+                      fontWeight: '700',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
                   >
-                    <option value="">Todos</option>
-                    {repsList.map(rep => (
-                      <option key={rep.CODIGO} value={rep.CODIGO}>
-                        {rep.NOME}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="filter-group">
-                  <label>Início</label>
-                  <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-                </div>
-                <div className="filter-group">
-                  <label>Fim</label>
-                  <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-                </div>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                    </svg>
+                    {showFilters ? 'OCULTAR FILTROS' : 'FILTRAR'}
+                  </button>
+                )}
               </div>
-            )}
+              <p style={{ marginTop: '0.2rem' }}>Gerenciamento e acompanhamento de vendas Mega ERP</p>
+            </div>
           </header>
+
+          {activeTab !== 'METAS' && showFilters && (
+            <div className="filters-panel" style={{ 
+              backgroundColor: '#ffffff', 
+              padding: '1rem', 
+              borderRadius: '8px', 
+              border: '1px solid #e2e8f0', 
+              marginBottom: '2rem',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+              display: 'flex',
+              gap: '1.5rem',
+              alignItems: 'flex-end',
+              animation: 'slideDown 0.3s ease-out'
+            }}>
+              <div className="filter-group">
+                <label>Filial</label>
+                <select value={filial} onChange={(e) => setFilial(e.target.value)}>
+                  <option value="ALL">Todas</option>
+                  <option value="100">AIRSLAID (100)</option>
+                  <option value="200">BIG TELAS (200)</option>
+                </select>
+              </div>
+              <div className="filter-group">
+                <label>Status</label>
+                <select value={status} onChange={(e) => setStatus(e.target.value)}>
+                  <option value="ALL">Todos</option>
+                  <option value="AP">Em Aberto</option>
+                  {activeTab !== 'PD' && <option value="B">Em Aprovação</option>}
+                  {activeTab !== 'OV' && <option value="F">Faturado</option>}
+                  <option value="C">Cancelado</option>
+                  {activeTab !== 'PD' && <option value="E">Encerrado</option>}
+                </select>
+              </div>
+              <div className="filter-group">
+                <label>Representante</label>
+                <select 
+                  value={representante} 
+                  onChange={(e) => setRepresentante(e.target.value)}
+                  style={{ width: '220px' }}
+                >
+                  <option value="">Todos</option>
+                  {repsList.map(rep => (
+                    <option key={rep.CODIGO} value={rep.CODIGO}>
+                      {rep.NOME}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="filter-group">
+                <label>Início</label>
+                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+              </div>
+              <div className="filter-group">
+                <label>Fim</label>
+                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+              </div>
+              <button 
+                onClick={fetchPedidos}
+                style={{
+                  backgroundColor: '#1e293b',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  padding: '0.4rem 1rem',
+                  fontSize: '0.7rem',
+                  fontWeight: '700',
+                  cursor: 'pointer'
+                }}
+              >
+                APLICAR
+              </button>
+            </div>
+          )}
 
           {activeTab === 'METAS' ? (
             <MetasManager repsList={repsList} metas={metas} fetchMetas={fetchMetas} />
