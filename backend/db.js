@@ -192,4 +192,142 @@ async function getItensPedido(org, ser, ped) {
   }
 }
 
-module.exports = { getPedidos, getRepresentantes, getItensPedido };
+async function getFaturamentos({ startDate, endDate, filial, representante }) {
+  let connection;
+  try {
+    connection = await oracledb.getConnection({
+      user          : "AIR",
+      password      : "AsrFTT8SjK",
+      connectString : "dbconnect.megaerp.online:4221/xepdb1"
+    });
+
+    let sql = `
+      SELECT N.ORG_IN_CODIGO,
+             N.NOT_IN_CODIGO,
+             N.FIL_IN_CODIGO,
+             N.SER_ST_CODIGO,
+             N.NOT_IN_NUMERO,
+             N.NOT_DT_EMISSAO,
+             N.NOT_CH_SITUACAO,
+             N.NOT_ST_CHAVEACESSO,
+             N.REP_IN_CODIGO,
+             R.AGN_ST_NOME AS REP_NOME,
+             N.AGN_IN_CODIGO,
+             A.AGN_ST_NOME AS CLIENTE_NOME,
+             N.NOT_RE_VALORMERCADORIA,
+             N.NOT_RE_VALORTOTAL,
+             (SELECT LISTAGG(M.PE_PED_IN_CODIGO, ', ') WITHIN GROUP (ORDER BY M.PE_PED_IN_CODIGO)
+                FROM (SELECT DISTINCT NF_NOT_IN_CODIGO, PE_PED_IN_CODIGO FROM MEGA.VEN_ITEMPEDI_VEN_ITEMNOT@AIR) M
+               WHERE M.NF_NOT_IN_CODIGO = N.NOT_IN_CODIGO) AS PEDIDOS,
+             (SELECT LISTAGG(TO_CHAR(PV.PED_DT_EMISSAO, 'DD/MM/YYYY'), ', ') WITHIN GROUP (ORDER BY PV.PED_DT_EMISSAO)
+                FROM (SELECT DISTINCT NF_NOT_IN_CODIGO, PE_ORG_IN_CODIGO, PE_SER_ST_CODIGO, PE_PED_IN_CODIGO FROM MEGA.VEN_ITEMPEDI_VEN_ITEMNOT@AIR) M
+                JOIN MEGA.VEN_PEDIDOVENDA@AIR PV 
+                  ON PV.ORG_IN_CODIGO = M.PE_ORG_IN_CODIGO 
+                 AND PV.SER_ST_CODIGO = M.PE_SER_ST_CODIGO 
+                 AND PV.PED_IN_CODIGO = M.PE_PED_IN_CODIGO
+               WHERE M.NF_NOT_IN_CODIGO = N.NOT_IN_CODIGO) AS PEDIDOS_DATAS
+        FROM MEGA.VEN_NOTAFISCAL@AIR N
+   LEFT JOIN MEGA.GLO_AGENTES@AIR A 
+          ON A.AGN_TAB_IN_CODIGO = N.AGN_TAB_IN_CODIGO
+         AND A.AGN_PAD_IN_CODIGO = N.AGN_PAD_IN_CODIGO
+         AND A.AGN_IN_CODIGO = N.AGN_IN_CODIGO
+   LEFT JOIN MEGA.GLO_AGENTES@AIR R 
+          ON R.AGN_IN_CODIGO = N.REP_IN_CODIGO
+       WHERE N.REP_IN_CODIGO IS NOT NULL
+         AND N.ORG_IN_CODIGO IN (10, 20)
+         AND N.TPD_IN_CODIGO <> 303
+         AND N.NOT_CH_SITUACAO <> 'C'
+         AND (
+             NOT EXISTS (SELECT 1 FROM MEGA.VEN_ITEMPEDI_VEN_ITEMNOT@AIR M WHERE M.NF_NOT_IN_CODIGO = N.NOT_IN_CODIGO)
+             OR 
+             EXISTS (
+                 SELECT 1 FROM MEGA.VEN_ITEMPEDI_VEN_ITEMNOT@AIR M
+                 WHERE M.NF_NOT_IN_CODIGO = N.NOT_IN_CODIGO
+                   AND M.PE_SER_ST_CODIGO <> 'DV'
+             )
+         )
+    `;
+
+    const binds = {};
+
+    if (filial && filial !== 'ALL') {
+      sql += ` AND N.FIL_IN_CODIGO = :filial`;
+      binds.filial = parseInt(filial, 10);
+    }
+
+    if (representante) {
+      sql += ` AND N.REP_IN_CODIGO = :representante`;
+      binds.representante = parseInt(representante, 10);
+    }
+
+    if (startDate && endDate) {
+      sql += ` AND N.NOT_DT_EMISSAO BETWEEN TO_DATE(:startDate, 'YYYY-MM-DD') AND TO_DATE(:endDate, 'YYYY-MM-DD')`;
+      binds.startDate = startDate;
+      binds.endDate = endDate;
+    }
+
+    sql += ` ORDER BY N.NOT_DT_EMISSAO DESC, N.NOT_IN_NUMERO DESC`;
+
+    const result = await connection.execute(
+      sql,
+      binds,
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+    
+    return result.rows;
+
+  } catch (err) {
+    console.error("Erro no db.js ao buscar faturamentos:", err.message);
+    throw err;
+  } finally {
+    if (connection) {
+      try { await connection.close(); } catch (err) { console.error(err); }
+    }
+  }
+}
+
+async function getItensFaturamento(org, not_id) {
+  let connection;
+  try {
+    connection = await oracledb.getConnection({
+      user          : "AIR",
+      password      : "AsrFTT8SjK",
+      connectString : "dbconnect.megaerp.online:4221/xepdb1"
+    });
+
+    const sql = `
+      SELECT I.ITN_IN_SEQUENCIA as "SEQUENCIA",
+             I.PRO_IN_CODIGO as "PRODUTO_COD",
+             P.PRO_ST_ALTERNATIVO as "PRODUTO_COD_ALT",
+             I.ITN_ST_DESCRICAO as "DESCRICAO",
+             I.ITN_ST_COMPLEMENTO as "COMPLEMENTO",
+             I.ITN_RE_QUANTIDADE as "QUANTIDADE",
+             I.UNI_ST_UNIDADE as "UNIDADE",
+             I.ITN_RE_VALORUNITARIO as "VALOR_UNITARIO",
+             I.ITN_RE_VALORTOTAL as "VALOR_TOTAL",
+             I.ITN_RE_VALORMERCADORIA as "VALOR_MERCADORIA"
+      FROM MEGA.VEN_ITEMNOTAFISCAL@AIR I
+      LEFT JOIN MEGA.EST_PRODUTOS@AIR P 
+        ON P.PRO_TAB_IN_CODIGO = I.PRO_TAB_IN_CODIGO
+       AND P.PRO_PAD_IN_CODIGO = I.PRO_PAD_IN_CODIGO
+       AND P.PRO_IN_CODIGO = I.PRO_IN_CODIGO
+      WHERE I.ORG_IN_CODIGO = :org
+        AND I.NOT_IN_CODIGO = :not_id
+      ORDER BY I.ITN_IN_SEQUENCIA
+    `;
+
+    const result = await connection.execute(sql, { org, not_id }, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+    return result.rows;
+  } catch (err) {
+    console.error("Erro no Banco (getItensFaturamento):", err);
+    throw err;
+  } finally {
+    if (connection) {
+      try { await connection.close(); } catch (err) { console.error(err); }
+    }
+  }
+}
+
+module.exports = { getPedidos, getRepresentantes, getItensPedido, getFaturamentos, getItensFaturamento };
+
+

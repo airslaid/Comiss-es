@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { getPedidos, getRepresentantes, getItensPedido } = require('./db');
+const { getPedidos, getRepresentantes, getItensPedido, getFaturamentos, getItensFaturamento } = require('./db');
 const supabase = require('./supabase');
 
 const app = express();
@@ -27,7 +27,17 @@ app.get('/api/representantes', async (req, res) => {
     res.json(representantes);
   } catch (error) {
     console.error("Erro na rota /api/representantes:", error);
-    res.status(500).json({ error: "Erro interno no servidor ao buscar representantes." });
+  }
+});
+
+app.get('/api/faturamentos', async (req, res) => {
+  try {
+    const { startDate, endDate, filial, representante } = req.query;
+    const faturamentos = await getFaturamentos({ startDate, endDate, filial, representante });
+    res.json(faturamentos);
+  } catch (error) {
+    console.error("Erro na rota /api/faturamentos:", error);
+    res.status(500).json({ error: "Erro interno no servidor ao buscar faturamentos." });
   }
 });
 
@@ -139,7 +149,19 @@ app.get('/api/pedidos/:org/:ser/:ped/itens', async (req, res) => {
     res.json(itens);
   } catch (error) {
     console.error("Erro na rota /api/pedidos/:org/:ser/:ped/itens:", error);
-    res.status(500).json({ error: "Erro interno no servidor ao buscar itens do pedido." });
+  }
+});
+
+app.get('/api/faturamentos/:org/:id/itens', async (req, res) => {
+  try {
+    const org = parseInt(req.params.org);
+    const id = parseInt(req.params.id);
+    console.log(`[ITENS_FAT] Buscando itens NF: org=${org}, id=${id}`);
+    const itens = await getItensFaturamento(org, id);
+    res.json(itens);
+  } catch (error) {
+    console.error("Erro na rota /api/faturamentos/:org/:id/itens:", error);
+    res.status(500).json({ error: "Erro interno no servidor ao buscar itens da nota fiscal." });
   }
 });
 

@@ -5,6 +5,7 @@ import OrdersTable from './components/OrdersTable';
 import MetasManager from './components/MetasManager';
 import RankingMetas from './components/RankingMetas';
 import PipelineCRM from './components/PipelineCRM';
+import FaturamentoTable from './components/FaturamentoTable';
 import FollowUpList from './components/FollowUpList';
 import './App.css';
 
@@ -27,12 +28,13 @@ function App() {
   const [representante, setRepresentante] = useState('');
   const [repsList, setRepsList] = useState([]);
   const [metas, setMetas] = useState([]);
+  const [faturamentos, setFaturamentos] = useState([]);
 
   const fetchMetas = async () => {
     try {
       const res = await fetch('http://localhost:3001/api/metas');
       const data = await res.json();
-      setMetas(data || []);
+      setMetas(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error(err);
     }
@@ -42,7 +44,7 @@ function App() {
     fetchMetas();
     fetch('http://localhost:3001/api/representantes')
       .then(res => res.json())
-      .then(data => setRepsList(data))
+      .then(data => setRepsList(Array.isArray(data) ? data : []))
       .catch(err => console.error("Erro ao buscar representantes:", err));
   }, []);
 
@@ -60,7 +62,7 @@ function App() {
       const response = await fetch(`http://localhost:3001/api/pedidos?${query}`);
       if (!response.ok) throw new Error('Erro ao buscar dados do servidor');
       const data = await response.json();
-      setPedidos(data);
+      setPedidos(Array.isArray(data) ? data : []);
       setError(null);
     } catch (err) {
       setError(err.message);
@@ -72,7 +74,30 @@ function App() {
   // Busca sempre que os filtros principais mudarem
   useEffect(() => {
     fetchPedidos();
-  }, [filial, startDate, endDate, status, representante]);
+    fetchFaturamentos();
+  }, [filial, startDate, endDate, status, representante, activeTab]);
+
+  const fetchFaturamentos = async () => {
+    setLoading(true);
+    try {
+      const query = new URLSearchParams({
+        filial,
+        startDate,
+        endDate,
+        ...(representante && { representante })
+      }).toString();
+      
+      const response = await fetch(`http://localhost:3001/api/faturamentos?${query}`);
+      if (!response.ok) throw new Error('Erro ao buscar faturamentos');
+      const data = await response.json();
+      setFaturamentos(Array.isArray(data) ? data : []);
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Reseta o status se for inválido para a aba atual
   useEffect(() => {
@@ -87,14 +112,26 @@ function App() {
   // Filtro local por aba (Série)
   const filteredData = activeTab === 'all' 
     ? pedidos 
-    : pedidos.filter(p => p.SER_ST_CODIGO === activeTab);
+    : activeTab === 'FAT'
+      ? faturamentos
+      : pedidos.filter(p => p.SER_ST_CODIGO === activeTab);
 
   // Estatísticas baseadas nos dados filtrados
-  const totalBruto = filteredData.reduce((acc, curr) => acc + curr.PED_RE_VALORTOTAL, 0);
-  const totalMercadoria = filteredData.reduce((acc, curr) => acc + curr.PED_RE_VLMERCADORIA, 0);
-  const valorCancelados = filteredData.filter(p => p.PED_CH_SITUACAO === 'C').reduce((acc, curr) => acc + curr.PED_RE_VALORTOTAL, 0);
-  const valorLiquido = totalMercadoria - valorCancelados;
-  const valorFaturados = filteredData.filter(p => p.PED_CH_SITUACAO === 'F').reduce((acc, curr) => acc + curr.PED_RE_VALORTOTAL, 0);
+  const valorCancelados = activeTab === 'FAT'
+    ? filteredData.filter(p => p.NOT_CH_SITUACAO === 'C').reduce((acc, curr) => acc + curr.NOT_RE_VALORTOTAL, 0)
+    : filteredData.filter(p => p.PED_CH_SITUACAO === 'C').reduce((acc, curr) => acc + curr.NOT_RE_VALORTOTAL, 0); // Wait, Pedidos use PED_RE_VALORTOTAL
+  
+  // Refined stat calculation
+  const isFat = activeTab === 'FAT';
+  const valTotalKey = isFat ? 'NOT_RE_VALORTOTAL' : 'PED_RE_VALORTOTAL';
+  const valMercKey = isFat ? 'NOT_RE_VALORMERCADORIA' : 'PED_RE_VLMERCADORIA';
+  const sitKey = isFat ? 'NOT_CH_SITUACAO' : 'PED_CH_SITUACAO';
+
+  const totalBruto = filteredData.reduce((acc, curr) => acc + (curr[valTotalKey] || 0), 0);
+  const totalMercadoria = filteredData.reduce((acc, curr) => acc + (curr[valMercKey] || 0), 0);
+  const valorCanceladosSum = filteredData.filter(p => p[sitKey] === 'C').reduce((acc, curr) => acc + (curr[valTotalKey] || 0), 0);
+  const valorLiquido = totalMercadoria - valorCanceladosSum;
+  const valorFaturados = faturamentos.reduce((acc, curr) => acc + (curr.NOT_RE_VALORTOTAL || 0), 0);
   const count = filteredData.length;
 
   const formatCurrency = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
@@ -139,6 +176,7 @@ function App() {
                   {activeTab === 'DV' && 'Desenvolvimentos'}
                   {activeTab === 'METAS' && 'Gestão de Metas'}
                   {activeTab === 'RANKING' && 'Ranking: Meta x Realizado'}
+                  {activeTab === 'FAT' && 'Relatório de Faturamento'}
                 </h1>
                 {activeTab !== 'METAS' && (
                   <button 
@@ -225,7 +263,13 @@ function App() {
                 <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
               </div>
               <button 
-                onClick={fetchPedidos}
+                onClick={() => {
+                  if (activeTab === 'FAT') {
+                    fetchFaturamentos();
+                  } else {
+                    fetchPedidos();
+                  }
+                }}
                 style={{
                   backgroundColor: '#1e293b',
                   color: 'white',
@@ -282,15 +326,24 @@ function App() {
                 </div>
               )}
 
-              <section className="stats-grid">
-                <StatCard title="Total Bruto" value={formatCurrency(totalBruto)} />
-                <StatCard title="Valor Líquido" value={formatCurrency(valorLiquido)} />
-                <StatCard 
-                  title={activeTab === 'OV' ? "Orçamentos Cancelados" : activeTab === 'DV' ? "Desenvolvimentos Cancelados" : "Pedidos Cancelados"} 
-                  value={formatCurrency(valorCancelados)} 
-                />
-                {activeTab !== 'OV' && activeTab !== 'DV' && <StatCard title="Valor Faturado" value={formatCurrency(valorFaturados)} />}
-                <StatCard title="Qtd. Registros" value={count} />
+              <section className="stats-grid" style={{ gridTemplateColumns: activeTab === 'FAT' ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(150px, 1fr))' }}>
+                {activeTab === 'FAT' ? (
+                  <>
+                    <StatCard title="Valor Total Faturamento" value={formatCurrency(totalBruto)} />
+                    <StatCard title="Qtd. de Notas Fiscais" value={count} />
+                  </>
+                ) : (
+                  <>
+                    <StatCard title="Total Bruto" value={formatCurrency(totalBruto)} />
+                    <StatCard title="Valor Líquido" value={formatCurrency(valorLiquido)} />
+                    <StatCard 
+                      title={activeTab === 'OV' ? "Orçamentos Cancelados" : activeTab === 'DV' ? "Desenvolvimentos Cancelados" : "Pedidos Cancelados"} 
+                      value={formatCurrency(valorCanceladosSum)} 
+                    />
+                    {activeTab !== 'OV' && activeTab !== 'DV' && <StatCard title="Valor Faturado" value={formatCurrency(valorFaturados)} />}
+                    <StatCard title="Qtd. Registros" value={count} />
+                  </>
+                )}
               </section>
 
               {loading ? (
@@ -319,7 +372,8 @@ function App() {
                   <div className="table-header-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h2>Lista de {activeTab === 'all' ? 'Registros' : 
                                   activeTab === 'OV' ? 'Orçamentos' : 
-                                  activeTab === 'PD' ? 'Pedidos' : 'Desenvolvimentos'}</h2>
+                                  activeTab === 'PD' ? 'Pedidos' : 
+                                  activeTab === 'FAT' ? 'Faturamento' : 'Desenvolvimentos'}</h2>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       <button 
                         onClick={() => window.print()}
@@ -353,24 +407,46 @@ function App() {
                             default: return s;
                           }
                         };
+                         const headers = activeTab === 'FAT' 
+                           ? ["NF Numero", "Pedido", "Emissao Ped.", "Serie", "Emissao", "Cod Cliente", "Cliente", "Representante", "Status", "Vlr Mercadoria", "Vlr Total"]
+                           : ["Pedido", "Tipo", "Emissao", "COD", "Cliente", "Representante", "Status", "VLR Liquido", "VLR Bruto"];
+                         
+                         const dataToExport = activeTab === 'FAT' ? faturamentos : filteredData;
+                         
+                         const rows = dataToExport.map(p => {
+                           if (activeTab === 'FAT') {
+                             return [
+                               p.NOT_IN_NUMERO,
+                               p.PEDIDOS || '',
+                               p.PEDIDOS_DATAS || '',
+                               p.SER_ST_CODIGO,
+                               new Date(p.NOT_DT_EMISSAO).toLocaleDateString('pt-BR'),
+                               p.AGN_IN_CODIGO,
+                               p.CLIENTE_NOME,
+                               p.REP_NOME || '',
+                               p.NOT_CH_SITUACAO === 'N' || p.NOT_CH_SITUACAO === 'A' ? 'Ativa' : p.NOT_CH_SITUACAO,
+                               formatCurrency(p.NOT_RE_VALORMERCADORIA).replace(/\u00a0/g, ' '),
+                               formatCurrency(p.NOT_RE_VALORTOTAL).replace(/\u00a0/g, ' ')
+                             ];
+                           } else {
+                             return [
+                               p.PED_IN_CODIGO,
+                               p.SER_ST_CODIGO === 'OV' ? 'Orçamento' : p.SER_ST_CODIGO === 'PD' ? 'Pedido' : 'Desenvolvimento',
+                               new Date(p.PED_DT_EMISSAO).toLocaleDateString('pt-BR'),
+                               p.CLI_IN_CODIGO,
+                               p.CLIENTE_NOME,
+                               p.REP_NOME || '',
+                               getStatusNome(p.PED_CH_SITUACAO),
+                               formatCurrency(p.PED_RE_VLMERCADORIA).replace(/\u00a0/g, ' '),
+                               formatCurrency(p.PED_RE_VALORTOTAL).replace(/\u00a0/g, ' ')
+                             ];
+                           }
+                         });
 
-                        const headers = ["Pedido", "Tipo", "Emissao", "COD", "Cliente", "Representante", "Status", "VLR Liquido", "VLR Bruto"];
-                        const rows = filteredData.map(p => [
-                          p.PED_IN_CODIGO,
-                          p.SER_ST_CODIGO === 'OV' ? 'Orçamento' : p.SER_ST_CODIGO === 'PD' ? 'Pedido' : 'Desenvolvimento',
-                          new Date(p.PED_DT_EMISSAO).toLocaleDateString('pt-BR'),
-                          p.CLI_IN_CODIGO,
-                          p.CLIENTE_NOME,
-                          p.REP_NOME || '',
-                          getStatusNome(p.PED_CH_SITUACAO),
-                          formatCurrency(p.PED_RE_VLMERCADORIA).replace(/\u00a0/g, ' '),
-                          formatCurrency(p.PED_RE_VALORTOTAL).replace(/\u00a0/g, ' ')
-                        ]);
-
-                        // Adiciona BOM (\ufeff) para o Excel reconhecer UTF-8 (acentos)
-                        let csvContent = "\ufeff" 
-                          + headers.join(";") + "\n"
-                          + rows.map(e => e.join(";")).join("\n");
+                         // Adiciona BOM (\ufeff) para o Excel reconhecer UTF-8 (acentos)
+                         let csvContent = "\ufeff" 
+                           + headers.join(";") + "\n"
+                           + rows.map(e => e.join(";")).join("\n");
 
                         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
                         const url = URL.createObjectURL(blob);
@@ -399,7 +475,11 @@ function App() {
                     </button>
                   </div>
                 </div>
-                  <OrdersTable pedidos={filteredData} />
+                  {activeTab === 'FAT' ? (
+                    <FaturamentoTable faturamentos={faturamentos} />
+                  ) : (
+                    <OrdersTable pedidos={filteredData} />
+                  )}
                 </section>
               )}
             </>
