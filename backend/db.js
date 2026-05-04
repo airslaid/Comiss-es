@@ -1,16 +1,6 @@
 const oracledb = require('oracledb');
 
-// Caminho para o Oracle Instant Client extraído
-const instantClientPath = 'C:\\oracle\\instantclient'; 
-
-try {
-  oracledb.initOracleClient({ libDir: instantClientPath });
-  console.log("Oracle Instant Client inicializado (Thick Mode).");
-} catch (err) {
-  console.warn("Oracle Instant Client não pôde ser inicializado. Usando Thin Mode nativo.");
-  console.warn(err.message);
-}
-
+// Removido initOracleClient para forçar o uso do Thin Mode puro sem tentar carregar binários inexistentes no Vercel
 // Configuração para evitar erro de truncamento de fetch em dados maiores (DPI-1037/ORA-01406)
 oracledb.fetchAsString = [oracledb.CLOB];
 

@@ -17,7 +17,7 @@ app.get('/api/pedidos', async (req, res) => {
     res.json(pedidos);
   } catch (error) {
     console.error("Erro na rota /api/pedidos:", error);
-    res.status(500).json({ error: "Erro interno no servidor ao buscar pedidos." });
+    res.status(500).json({ error: `Erro no banco de dados: ${error.message}` });
   }
 });
 
@@ -37,7 +37,7 @@ app.get('/api/faturamentos', async (req, res) => {
     res.json(faturamentos);
   } catch (error) {
     console.error("Erro na rota /api/faturamentos:", error);
-    res.status(500).json({ error: "Erro interno no servidor ao buscar faturamentos." });
+    res.status(500).json({ error: `Erro no banco de dados: ${error.message}` });
   }
 });
 
