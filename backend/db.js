@@ -371,15 +371,19 @@ async function getClientes({ representante }) {
     });
 
     let sql = `
-      SELECT A.AGN_IN_CODIGO, 
-             A.AGN_ST_NOME, 
-             A.AGN_ST_CGC, 
+      SELECT C.AGN_IN_CODIGO, 
+             (SELECT SUBSTR(A.AGN_ST_NOME, 1, 80) FROM MEGA.GLO_AGENTES@AIR A 
+               WHERE A.AGN_TAB_IN_CODIGO = C.AGN_TAB_IN_CODIGO 
+                 AND A.AGN_PAD_IN_CODIGO = C.AGN_PAD_IN_CODIGO 
+                 AND A.AGN_IN_CODIGO = C.AGN_IN_CODIGO 
+                 AND ROWNUM = 1) AS AGN_ST_NOME,
+             (SELECT SUBSTR(A.AGN_ST_CGC, 1, 20) FROM MEGA.GLO_AGENTES@AIR A 
+               WHERE A.AGN_TAB_IN_CODIGO = C.AGN_TAB_IN_CODIGO 
+                 AND A.AGN_PAD_IN_CODIGO = C.AGN_PAD_IN_CODIGO 
+                 AND A.AGN_IN_CODIGO = C.AGN_IN_CODIGO 
+                 AND ROWNUM = 1) AS AGN_ST_CGC,
              'UF' AS UF_ST_SIGLA
         FROM MEGA.GLO_CLIENTE@AIR C
-        LEFT JOIN MEGA.GLO_AGENTES@AIR A 
-          ON A.AGN_TAB_IN_CODIGO = C.AGN_TAB_IN_CODIGO
-         AND A.AGN_PAD_IN_CODIGO = C.AGN_PAD_IN_CODIGO
-         AND A.AGN_IN_CODIGO = C.AGN_IN_CODIGO
        WHERE ROWNUM <= 100
     `;
 
@@ -389,7 +393,7 @@ async function getClientes({ representante }) {
     
     return result.rows.map(row => ({
       AGN_IN_CODIGO: row[0] || 'N/A',
-      AGN_ST_NOME: row[1] || 'CLIENTE SEM NOME',
+      AGN_ST_NOME: row[1] || 'NOME NÃO ENCONTRADO',
       AGN_ST_CGC: row[2] || '000',
       UF_ST_SIGLA: row[3] || 'UF'
     }));
