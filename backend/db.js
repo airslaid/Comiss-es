@@ -257,7 +257,7 @@ async function getFaturamentos({ startDate, endDate, filial, representante }) {
           ON R.AGN_IN_CODIGO = N.REP_IN_CODIGO
        WHERE N.REP_IN_CODIGO IS NOT NULL
          AND N.ORG_IN_CODIGO IN (10, 20)
-         AND N.TPD_IN_CODIGO <> 303
+         AND N.TPD_IN_CODIGO NOT IN (303, 617)
          AND N.NOT_CH_SITUACAO <> 'C'
          AND (
              NOT EXISTS (SELECT 1 FROM MEGA.VEN_ITEMPEDI_VEN_ITEMNOT@AIR M WHERE M.NF_NOT_IN_CODIGO = N.NOT_IN_CODIGO)
@@ -275,6 +275,9 @@ async function getFaturamentos({ startDate, endDate, filial, representante }) {
     if (filial && filial !== 'ALL') {
       sql += ` AND N.FIL_IN_CODIGO = :filial`;
       binds.filial = parseInt(filial, 10);
+    } else {
+      // Se for ALL, trazemos apenas 100 e 200 conforme solicitado
+      sql += ` AND N.FIL_IN_CODIGO IN (100, 200)`;
     }
 
     if (representante) {
