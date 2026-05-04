@@ -371,12 +371,18 @@ async function getClientes({ representante }) {
     });
 
     let sql = `
-      SELECT AGN_IN_CODIGO, 
-             'CLIENTE ' || AGN_IN_CODIGO AS AGN_ST_NOME, 
+      SELECT A.AGN_IN_CODIGO, 
+             SUBSTR(A.AGN_ST_NOME, 1, 80) AS AGN_ST_NOME, 
              '000' AS AGN_ST_CGC, 
              'UF' AS UF_ST_SIGLA
-        FROM MEGA.GLO_CLIENTE@AIR
-       WHERE ROWNUM <= 100
+        FROM MEGA.GLO_AGENTES@AIR A
+       WHERE EXISTS (
+         SELECT 1 FROM MEGA.GLO_CLIENTE@AIR C
+          WHERE C.AGN_TAB_IN_CODIGO = A.AGN_TAB_IN_CODIGO
+            AND C.AGN_PAD_IN_CODIGO = A.AGN_PAD_IN_CODIGO
+            AND C.AGN_IN_CODIGO = A.AGN_IN_CODIGO
+       )
+       AND ROWNUM <= 100
     `;
 
     const binds = {};
