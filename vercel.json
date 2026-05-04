@@ -4,7 +4,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/api/index"
+      "destination": "https://haphazard-crimp-antiquity.ngrok-free.dev/api/$1"
     },
     {
       "source": "/(.*)",
