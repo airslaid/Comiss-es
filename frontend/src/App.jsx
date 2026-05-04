@@ -14,6 +14,20 @@ import TarefasCRM from './components/TarefasCRM';
 import { supabase } from './supabaseClient';
 import './App.css';
 
+// Interceptor Global para pular o aviso do ngrok (necessário para a "Ponte" funcionar)
+const originalFetch = window.fetch;
+window.fetch = (...args) => {
+  if (typeof args[0] === 'string' && args[0].includes('/api/')) {
+    const options = args[1] || {};
+    options.headers = {
+      ...(options.headers || {}),
+      'ngrok-skip-browser-warning': 'true'
+    };
+    return originalFetch(args[0], options);
+  }
+  return originalFetch(...args);
+};
+
 function App() {
   // Datas padrão: Mês Atual
   const now = new Date();
