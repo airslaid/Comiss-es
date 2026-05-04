@@ -657,6 +657,94 @@ app.delete('/api/crm/tarefas/:id', async (req, res) => {
 });
 
 
+// --- Pagamentos de Comissões ---
+app.get('/api/comissoes/pagamentos', async (req, res) => {
+  try {
+    const { mes_ano } = req.query;
+    let query = supabase.from('crm_comissoes_pagamentos').select('*');
+    
+    if (mes_ano) {
+      query = query.eq('mes_ano_referencia', mes_ano);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    res.json(data || []);
+  } catch (error) {
+    console.error("Erro na rota GET /api/comissoes/pagamentos:", error);
+    res.status(500).json({ error: "Erro ao buscar pagamentos de comissões." });
+  }
+});
+
+app.post('/api/comissoes/pagamentos/batch', async (req, res) => {
+  try {
+    const { items } = req.body; // Array de objetos de pagamento
+    
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: "Nenhum item enviado para pagamento." });
+    }
+
+    const { data, error } = await supabase
+      .from('crm_comissoes_pagamentos')
+      .insert(items);
+
+    if (error) {
+      if (error.code === '23505') {
+        return res.status(400).json({ error: "Um ou mais pagamentos deste lote já foram registrados." });
+      }
+      throw error;
+    }
+    res.json({ success: true, count: items.length });
+  } catch (error) {
+    console.error("Erro na rota POST /api/comissoes/pagamentos/batch:", error);
+    res.status(500).json({ error: "Erro ao registrar pagamentos em lote." });
+  }
+});
+
+app.post('/api/comissoes/pagamentos', async (req, res) => {
+  try {
+    const { nf_numero, org_in_codigo, role, valor_comissao, mes_ano_referencia, rep_in_codigo, pago_por } = req.body;
+    
+    const { data, error } = await supabase
+      .from('crm_comissoes_pagamentos')
+      .insert([{ 
+        nf_numero, 
+        org_in_codigo, 
+        role, 
+        valor_comissao, 
+        mes_ano_referencia, 
+        rep_in_codigo, 
+        pago_por 
+      }]);
+
+    if (error) {
+      if (error.code === '23505') {
+        return res.status(400).json({ error: "Este pagamento já foi registrado anteriormente." });
+      }
+      throw error;
+    }
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Erro na rota POST /api/comissoes/pagamentos:", error);
+    res.status(500).json({ error: "Erro ao registrar pagamento de comissão." });
+  }
+});
+
+app.delete('/api/comissoes/pagamentos/:id', async (req, res) => {
+  try {
+    const { error } = await supabase
+      .from('crm_comissoes_pagamentos')
+      .delete()
+      .eq('id', req.params.id);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Erro na rota DELETE /api/comissoes/pagamentos/:id:", error);
+    res.status(500).json({ error: "Erro ao excluir registro de pagamento." });
+  }
+});
+
+
 if (process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => {
     console.log(`Servidor rodando na porta ${PORT}`);

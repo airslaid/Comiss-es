@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 const Sidebar = ({ activeTab, setActiveTab, permissions, session }) => {
   const [crmExpanded, setCrmExpanded] = useState(true);
+  const [comissoesExpanded, setComissoesExpanded] = useState(true);
 
   const role = permissions?.role || 'USER';
   const allowedModules = permissions?.allowed_modules || ['all'];
@@ -24,11 +25,46 @@ const Sidebar = ({ activeTab, setActiveTab, permissions, session }) => {
         <polyline points="17 6 23 6 23 12"></polyline>
       </svg>
     ) },
-    { id: 'COMISSOES', label: 'Comissões', icon: (
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6M2 17h20M2 7h20" />
-      </svg>
-    ) },
+    { 
+      id: 'COMISSOES', 
+      label: 'Comissões', 
+      isParent: true,
+      icon: (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6M2 17h20M2 7h20" />
+        </svg>
+      ),
+      subItems: [
+        { id: 'COMISSOES_GERAL', label: 'Visão Geral' },
+        { id: 'COMISSOES_REPS', label: 'Representantes' },
+        { id: 'COMISSOES_GERENTE', label: 'Gerente Comercial' },
+        { id: 'COMISSOES_SUPERVISOR', label: 'Supervisor de Vendas' },
+        { id: 'COMISSOES_EXECUTIVO', label: 'Executivo de Vendas' },
+        { id: 'COMISSOES_ASSISTENTE', label: 'Assistente / Orçamentista' }
+      ]
+    },
+    { 
+      id: 'PAGAMENTOS', 
+      label: 'Controle de Pagamentos', 
+      icon: (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="5" width="20" height="14" rx="2" ry="2"></rect>
+          <line x1="2" y1="10" x2="22" y2="10"></line>
+        </svg>
+      ) 
+    },
+    { 
+      id: 'USERS', 
+      label: 'Gestão de Usuários', 
+      icon: (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+          <circle cx="9" cy="7" r="4"></circle>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+        </svg>
+      ) 
+    },
   ];
 
   // Filtra os itens baseado na permissão
@@ -62,11 +98,16 @@ const Sidebar = ({ activeTab, setActiveTab, permissions, session }) => {
         {menuItems.map((item) => (
           <div key={item.id}>
             <button
-              className={`nav-item ${activeTab.startsWith('CRM') && item.id === 'CRM' ? 'active' : activeTab === item.id ? 'active' : ''}`}
+              className={`nav-item ${item.isParent && activeTab.startsWith(item.id) ? 'active' : activeTab === item.id ? 'active' : ''}`}
               onClick={() => {
                 if (item.isParent) {
-                  setCrmExpanded(!crmExpanded);
-                  if (!activeTab.startsWith('CRM')) setActiveTab('CRM_PIPELINE');
+                  if (item.id === 'CRM') {
+                    setCrmExpanded(!crmExpanded);
+                    if (!activeTab.startsWith('CRM')) setActiveTab('CRM_PIPELINE');
+                  } else if (item.id === 'COMISSOES') {
+                    setComissoesExpanded(!comissoesExpanded);
+                    if (!activeTab.startsWith('COMISSOES')) setActiveTab('COMISSOES_REPS');
+                  }
                 } else {
                   setActiveTab(item.id);
                 }
@@ -80,14 +121,17 @@ const Sidebar = ({ activeTab, setActiveTab, permissions, session }) => {
               {item.isParent && (
                 <svg 
                   width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                  style={{ transform: crmExpanded ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s' }}
+                  style={{ 
+                    transform: (item.id === 'CRM' ? crmExpanded : comissoesExpanded) ? 'rotate(0deg)' : 'rotate(-90deg)', 
+                    transition: 'transform 0.2s' 
+                  }}
                 >
                   <polyline points="6 9 12 15 18 9"></polyline>
                 </svg>
               )}
             </button>
             
-            {item.isParent && crmExpanded && (
+            {item.isParent && (item.id === 'CRM' ? crmExpanded : comissoesExpanded) && (
               <div className="submenu" style={{ display: 'flex', flexDirection: 'column' }}>
                 {item.subItems.map(sub => (
                   <button
@@ -96,7 +140,7 @@ const Sidebar = ({ activeTab, setActiveTab, permissions, session }) => {
                     onClick={() => setActiveTab(sub.id)}
                     style={{ 
                       paddingLeft: '2.5rem', 
-                      background: activeTab === sub.id ? '#f1f5f9' : 'transparent', // Cinza azulado bem claro
+                      background: activeTab === sub.id ? '#f1f5f9' : 'transparent', 
                       color: activeTab === sub.id ? '#1e293b' : '#64748b',
                       fontWeight: activeTab === sub.id ? '700' : '600'
                     }}

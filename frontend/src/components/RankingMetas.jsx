@@ -42,12 +42,18 @@ const RankingMetas = ({ pedidos, metas, representantes, startDate }) => {
 
   const totalMeta = ranking.reduce((acc, curr) => acc + curr.meta, 0);
   const totalRealizado = ranking.reduce((acc, curr) => acc + curr.realizado, 0);
+  const totalAtingimento = totalMeta > 0 ? (totalRealizado / totalMeta) * 100 : 0;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <section className="stats-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
+      <section className="stats-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
         <StatCard title="Total Meta" value={formatCurrency(totalMeta)} />
         <StatCard title="Total Realizado" value={formatCurrency(totalRealizado)} />
+        <StatCard 
+          title="Total Atingimento" 
+          value={`${totalAtingimento.toFixed(1)}%`} 
+          trend={totalAtingimento >= 100 ? 'up' : 'down'}
+        />
       </section>
 
       <div className="table-container">

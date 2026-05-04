@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 
-const ComissoesTable = ({ faturamentos, metas, atingimentoMensal }) => {
+const ComissoesTable = ({ faturamentos, metas, atingimentoMensal, manualDates, onDateChange, role }) => {
   const [selectedFat, setSelectedFat] = useState(null);
   const [itens, setItens] = useState([]);
   const [loadingItens, setLoadingItens] = useState(false);
@@ -9,13 +9,13 @@ const ComissoesTable = ({ faturamentos, metas, atingimentoMensal }) => {
   const [widths, setWidths] = useState({
     nf: 80,
     pedido: 70,
-    emissaoPed: 100,
+    emissaoPed: 120,
     emissao: 90,
     cod: 80,
     cliente: 300,
     rep: 150,
     vlrTotal: 110,
-    pctComiss: 80,
+    pctComiss: 100,
     vlrComiss: 110
   });
 
@@ -75,38 +75,61 @@ const ComissoesTable = ({ faturamentos, metas, atingimentoMensal }) => {
 
   const getCommissionData = (fat) => {
     // 1. Obter mês/ano do pedido (formato DD/MM/YYYY na string)
-    if (!fat.PEDIDOS_DATAS) return { pct: 0, valor: 0, atingimento: 0 };
+    let orderDate = fat.PEDIDOS_DATAS;
+    if (!orderDate && manualDates && manualDates[fat.NOT_IN_NUMERO]) {
+      const parts = manualDates[fat.NOT_IN_NUMERO].split('-');
+      orderDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+
+    if (!orderDate) return { pct: 0, valor: 0, atingimento: 0 };
     
-    const firstDate = fat.PEDIDOS_DATAS.split(',')[0].trim();
+    const firstDate = orderDate.split(',')[0].trim();
     const dateParts = firstDate.split('/');
     if (dateParts.length !== 3) return { pct: 0, valor: 0, atingimento: 0 };
     
     const [day, month, year] = dateParts;
     const mesAno = `${year}-${month}`;
     
-    const repId = fat.REP_IN_CODIGO;
+    const repId = Number(fat.REP_IN_CODIGO);
 
-    // 2. Buscar meta
-    const metaObj = metas.find(m => m.rep_in_codigo === repId && m.mes_ano === mesAno);
+    // 2. Dados base de atingimento
+    const metaObj = metas.find(m => Number(m.rep_in_codigo) === repId && m.mes_ano === mesAno);
     const valorMeta = metaObj ? metaObj.valor_meta : 0;
-
-    // 3. Buscar realizado
-    const realObj = atingimentoMensal.find(a => a.REP_IN_CODIGO === repId && a.MES_ANO === mesAno);
+    const realObj = atingimentoMensal.find(a => Number(a.REP_IN_CODIGO) === repId && a.MES_ANO === mesAno);
     const valorRealizado = realObj ? realObj.TOTAL_REALIZADO : 0;
+    const atingimentoRep = valorMeta > 0 ? (valorRealizado / valorMeta) * 100 : 0;
 
-    // 4. Calcular atingimento
-    const atingimento = valorMeta > 0 ? (valorRealizado / valorMeta) * 100 : 0;
-
-    // 5. Aplicar regra
     let pct = 0;
-    if (atingimento === 0) pct = 0;
-    else if (atingimento <= 65) pct = 1;
-    else if (atingimento <= 85) pct = 1.5;
-    else pct = 2;
+    let displayAtingimento = atingimentoRep;
+
+    if (role === 'COMISSOES_GERENTE') {
+      const totalMetaMes = metas.filter(m => m.mes_ano === mesAno).reduce((acc, curr) => acc + curr.valor_meta, 0);
+      const totalRealMes = atingimentoMensal.filter(a => a.MES_ANO === mesAno).reduce((acc, curr) => acc + curr.TOTAL_REALIZADO, 0);
+      const atingimentoGeral = totalMetaMes > 0 ? (totalRealMes / totalMetaMes) * 100 : 0;
+      pct = atingimentoGeral <= 85 ? 0.35 : 0.5;
+      displayAtingimento = atingimentoGeral;
+    } 
+    else if (role === 'COMISSOES_SUPERVISOR' || role === 'COMISSOES_EXECUTIVO') {
+      pct = atingimentoRep <= 85 ? 0.15 : 0.25;
+    }
+    else if (role === 'COMISSOES_ASSISTENTE') {
+      pct = 0.05;
+    }
+    else {
+      // Regra Representante (Padrão)
+      // Exceção: AIR SLAID TECIDOS TÉCNICOS LTDA (Fixo 1%)
+      if (fat.REP_NOME && fat.REP_NOME.toUpperCase().includes('AIR SLAID')) {
+        pct = 1;
+      }
+      else if (valorMeta === 0) pct = 0;
+      else if (atingimentoRep <= 65) pct = 1;
+      else if (atingimentoRep <= 85) pct = 1.5;
+      else pct = 2;
+    }
 
     const valorComissao = (fat.NOT_RE_VALORTOTAL || 0) * (pct / 100);
 
-    return { pct, valor: valorComissao, atingimento };
+    return { pct, valor: valorComissao, atingimento: displayAtingimento };
   };
 
   const sortedData = useMemo(() => {
@@ -279,7 +302,25 @@ const ComissoesTable = ({ faturamentos, metas, atingimentoMensal }) => {
                   </button>
                 </td>
                 <td style={{ ...tdStyle(widths.pedido), fontWeight: '600' }}>{fat.PEDIDOS || '-'}</td>
-                <td style={tdStyle(widths.emissaoPed)}>{fat.PEDIDOS_DATAS || '-'}</td>
+                <td style={tdStyle(widths.emissaoPed)}>
+                  {fat.PEDIDOS_DATAS ? (
+                    fat.PEDIDOS_DATAS
+                  ) : (
+                    <input 
+                      type="date" 
+                      value={manualDates[fat.NOT_IN_NUMERO] || ''} 
+                      onChange={(e) => onDateChange(fat.NOT_IN_NUMERO, e.target.value)}
+                      style={{
+                        fontSize: '0.65rem',
+                        padding: '0.1rem',
+                        width: '100%',
+                        borderRadius: '4px',
+                        border: '1px solid var(--panel-border)',
+                        backgroundColor: '#fff9db' // Leve amarelo para indicar edição manual
+                      }}
+                    />
+                  )}
+                </td>
                 <td style={tdStyle(widths.emissao)}>{formatDate(fat.NOT_DT_EMISSAO)}</td>
                 <td style={{ ...tdStyle(widths.cod), fontWeight: '500' }}>{fat.AGN_IN_CODIGO}</td>
                 <td style={{ ...tdStyle(widths.cliente), fontWeight: '600', textAlign: 'left' }}>{fat.CLIENTE_NOME}</td>
@@ -413,6 +454,39 @@ const ComissoesTable = ({ faturamentos, metas, atingimentoMensal }) => {
           </div>
         </div>
       )}
+      {/* Tabela de Impressão para PDF */}
+      <div className="print-only" style={{ display: 'none' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              <th style={{ padding: '8px', border: '1px solid #ddd', fontSize: '8pt' }}>NF</th>
+              <th style={{ padding: '8px', border: '1px solid #ddd', fontSize: '8pt' }}>PEDIDO</th>
+              <th style={{ padding: '8px', border: '1px solid #ddd', fontSize: '8pt' }}>EMISSÃO PED.</th>
+              <th style={{ padding: '8px', border: '1px solid #ddd', fontSize: '8pt' }}>EMISSÃO</th>
+              <th style={{ padding: '8px', border: '1px solid #ddd', fontSize: '8pt' }}>CLIENTE</th>
+              <th style={{ padding: '8px', border: '1px solid #ddd', fontSize: '8pt' }}>REPRESENTANTE</th>
+              <th style={{ padding: '8px', border: '1px solid #ddd', fontSize: '8pt' }}>VLR TOTAL</th>
+              <th style={{ padding: '8px', border: '1px solid #ddd', fontSize: '8pt' }}>% COMISS.</th>
+              <th style={{ padding: '8px', border: '1px solid #ddd', fontSize: '8pt' }}>VLR COMISSÃO</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sortedData.map((fat, idx) => (
+              <tr key={`print-${fat.NOT_IN_NUMERO}-${idx}`}>
+                <td style={{ padding: '6px', border: '1px solid #ddd', fontSize: '7pt', textAlign: 'center' }}>#{fat.NOT_IN_NUMERO}</td>
+                <td style={{ padding: '6px', border: '1px solid #ddd', fontSize: '7pt', textAlign: 'center' }}>{fat.PEDIDOS || '-'}</td>
+                <td style={{ padding: '6px', border: '1px solid #ddd', fontSize: '7pt', textAlign: 'center' }}>{fat.PEDIDOS_DATAS || manualDates[fat.NOT_IN_NUMERO] || '-'}</td>
+                <td style={{ padding: '6px', border: '1px solid #ddd', fontSize: '7pt', textAlign: 'center' }}>{formatDate(fat.NOT_DT_EMISSAO)}</td>
+                <td style={{ padding: '6px', border: '1px solid #ddd', fontSize: '7pt', textAlign: 'left' }}>{fat.CLIENTE_NOME}</td>
+                <td style={{ padding: '6px', border: '1px solid #ddd', fontSize: '7pt', textAlign: 'center' }}>{fat.REP_NOME}</td>
+                <td style={{ padding: '6px', border: '1px solid #ddd', fontSize: '7pt', textAlign: 'center' }}>{formatCurrency(fat.NOT_RE_VALORTOTAL)}</td>
+                <td style={{ padding: '6px', border: '1px solid #ddd', fontSize: '7pt', textAlign: 'center', fontWeight: 'bold' }}>{fat.pct}%</td>
+                <td style={{ padding: '6px', border: '1px solid #ddd', fontSize: '7pt', textAlign: 'center', fontWeight: 'bold' }}>{formatCurrency(fat.valor)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </>
   );
 };

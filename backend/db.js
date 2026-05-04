@@ -62,15 +62,14 @@ async function getPedidos({ startDate, endDate, filial, status, representante, i
          AND A.AGN_IN_CODIGO = P.CLI_IN_CODIGO
    LEFT JOIN MEGA.GLO_AGENTES@AIR R 
           ON R.AGN_IN_CODIGO = P.REP_IN_CODIGO
-       WHERE P.ORG_IN_CODIGO IN (10, 20) 
-         AND P.SER_ST_CODIGO IN ('OV', 'PD', 'DV')
+        WHERE P.ORG_IN_CODIGO IN (10, 20) 
+          AND P.SER_ST_CODIGO IN ('OV', 'PD', 'DV')
+          AND P.TPD_IN_CODIGO NOT IN (212, 303, 617)
     `;
 
     const binds = {};
 
     if (ids && Array.isArray(ids) && ids.length > 0) {
-      // Filtrar por uma lista de códigos de pedido
-      // Como o Oracle tem limite de 1000 elementos no IN, vamos ser cuidadosos, mas aqui deve ser de boa
       const idPlaceholders = ids.map((id, index) => `:id${index}`).join(', ');
       sql += ` AND P.PED_IN_CODIGO IN (${idPlaceholders})`;
       ids.forEach((id, index) => {
@@ -108,34 +107,22 @@ async function getPedidos({ startDate, endDate, filial, status, representante, i
       }
     }
 
-    // Usamos TO_DATE para garantir a comparação correta no Oracle
     if (startDate && endDate) {
       sql += ` AND P.PED_DT_EMISSAO BETWEEN TO_DATE(:startDate, 'YYYY-MM-DD') AND TO_DATE(:endDate, 'YYYY-MM-DD')`;
       binds.startDate = startDate;
       binds.endDate = endDate;
     }
 
-    // Ordenar do mais recente para o mais antigo
     sql += ` ORDER BY P.PED_DT_EMISSAO DESC, P.PED_IN_CODIGO DESC`;
 
-    const result = await connection.execute(
-      sql,
-      binds,
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
-    );
-    
+    const result = await connection.execute(sql, binds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
     return result.rows;
-
   } catch (err) {
     console.error("Erro no db.js ao buscar pedidos:", err.message);
     throw err;
   } finally {
     if (connection) {
-      try {
-        await connection.close();
-      } catch (err) {
-        console.error(err);
-      }
+      try { await connection.close(); } catch (err) { console.error(err); }
     }
   }
 }
@@ -148,7 +135,6 @@ async function getRepresentantes() {
       password      : "AsrFTT8SjK",
       connectString : "dbconnect.megaerp.online:4221/xepdb1"
     });
-
     let sql = `
       SELECT DISTINCT P.REP_IN_CODIGO AS CODIGO, R.AGN_ST_NOME AS NOME
         FROM MEGA.VEN_PEDIDOVENDA@AIR P
@@ -158,7 +144,6 @@ async function getRepresentantes() {
          AND R.AGN_ST_NOME IS NOT NULL
        ORDER BY R.AGN_ST_NOME
     `;
-
     const result = await connection.execute(sql, [], { outFormat: oracledb.OUT_FORMAT_OBJECT });
     return result.rows;
   } catch (err) {
@@ -179,7 +164,6 @@ async function getItensPedido(org, ser, ped) {
       password      : "AsrFTT8SjK",
       connectString : "dbconnect.megaerp.online:4221/xepdb1"
     });
-
     const sql = `
       SELECT I.ITP_IN_SEQUENCIA as "SEQUENCIA",
              I.PRO_IN_CODIGO as "PRODUTO_COD",
@@ -201,7 +185,6 @@ async function getItensPedido(org, ser, ped) {
         AND I.PED_IN_CODIGO = :ped
       ORDER BY I.ITP_IN_SEQUENCIA
     `;
-
     const result = await connection.execute(sql, { org, ser, ped }, { outFormat: oracledb.OUT_FORMAT_OBJECT });
     return result.rows;
   } catch (err) {
@@ -222,7 +205,6 @@ async function getFaturamentos({ startDate, endDate, filial, representante }) {
       password      : "AsrFTT8SjK",
       connectString : "dbconnect.megaerp.online:4221/xepdb1"
     });
-
     let sql = `
       SELECT N.ORG_IN_CODIGO,
              N.NOT_IN_CODIGO,
@@ -257,7 +239,7 @@ async function getFaturamentos({ startDate, endDate, filial, representante }) {
           ON R.AGN_IN_CODIGO = N.REP_IN_CODIGO
        WHERE N.REP_IN_CODIGO IS NOT NULL
          AND N.ORG_IN_CODIGO IN (10, 20)
-         AND N.TPD_IN_CODIGO NOT IN (303, 617)
+         AND N.TPD_IN_CODIGO NOT IN (212, 303, 617)
          AND N.NOT_CH_SITUACAO <> 'C'
          AND (
              NOT EXISTS (SELECT 1 FROM MEGA.VEN_ITEMPEDI_VEN_ITEMNOT@AIR M WHERE M.NF_NOT_IN_CODIGO = N.NOT_IN_CODIGO)
@@ -269,17 +251,13 @@ async function getFaturamentos({ startDate, endDate, filial, representante }) {
              )
          )
     `;
-
     const binds = {};
-
     if (filial && filial !== 'ALL') {
       sql += ` AND N.FIL_IN_CODIGO = :filial`;
       binds.filial = parseInt(filial, 10);
     } else {
-      // Se for ALL, trazemos apenas 100 e 200 conforme solicitado
       sql += ` AND N.FIL_IN_CODIGO IN (100, 200)`;
     }
-
     if (representante) {
       const repIds = representante.split(',').map(id => parseInt(id.trim(), 10)).filter(id => !isNaN(id));
       if (repIds.length > 0) {
@@ -295,23 +273,14 @@ async function getFaturamentos({ startDate, endDate, filial, representante }) {
         }
       }
     }
-
     if (startDate && endDate) {
       sql += ` AND N.NOT_DT_EMISSAO BETWEEN TO_DATE(:startDate, 'YYYY-MM-DD') AND TO_DATE(:endDate, 'YYYY-MM-DD')`;
       binds.startDate = startDate;
       binds.endDate = endDate;
     }
-
     sql += ` ORDER BY N.NOT_DT_EMISSAO DESC, N.NOT_IN_NUMERO DESC`;
-
-    const result = await connection.execute(
-      sql,
-      binds,
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
-    );
-    
+    const result = await connection.execute(sql, binds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
     return result.rows;
-
   } catch (err) {
     console.error("Erro no db.js ao buscar faturamentos:", err.message);
     throw err;
@@ -330,7 +299,6 @@ async function getItensFaturamento(org, not_id) {
       password      : "AsrFTT8SjK",
       connectString : "dbconnect.megaerp.online:4221/xepdb1"
     });
-
     const sql = `
       SELECT I.ITN_IN_SEQUENCIA as "SEQUENCIA",
              I.PRO_IN_CODIGO as "PRODUTO_COD",
@@ -351,7 +319,6 @@ async function getItensFaturamento(org, not_id) {
         AND I.NOT_IN_CODIGO = :not_id
       ORDER BY I.ITN_IN_SEQUENCIA
     `;
-
     const result = await connection.execute(sql, { org, not_id }, { outFormat: oracledb.OUT_FORMAT_OBJECT });
     return result.rows;
   } catch (err) {
@@ -372,7 +339,6 @@ async function getClientes({ representante }) {
       password      : "AsrFTT8SjK",
       connectString : "dbconnect.megaerp.online:4221/xepdb1"
     });
-
     let sql = `
       SELECT C.AGN_IN_CODIGO, 
              (SELECT TO_CHAR(SUBSTR(A.AGN_ST_NOME, 1, 80)) FROM MEGA.GLO_AGENTES@AIR A 
@@ -389,11 +355,7 @@ async function getClientes({ representante }) {
         FROM MEGA.GLO_CLIENTE@AIR C
        WHERE ROWNUM <= 100
     `;
-
-    const binds = {};
-
-    const result = await connection.execute(sql, binds, { outFormat: oracledb.OUT_FORMAT_ARRAY });
-    
+    const result = await connection.execute(sql, {}, { outFormat: oracledb.OUT_FORMAT_ARRAY });
     return result.rows.map(row => ({
       AGN_IN_CODIGO: row[0] || 'N/A',
       AGN_ST_NOME: row[1] || 'NOME NÃO ENCONTRADO',
@@ -418,20 +380,18 @@ async function getAtingimentoMensal() {
       password      : "AsrFTT8SjK",
       connectString : "dbconnect.megaerp.online:4221/xepdb1"
     });
-
     const sql = `
       SELECT REP_IN_CODIGO, 
              TO_CHAR(PED_DT_EMISSAO, 'YYYY-MM') AS MES_ANO, 
              SUM(PED_RE_VALORTOTAL) AS TOTAL_REALIZADO
         FROM MEGA.VEN_PEDIDOVENDA@AIR
-       WHERE PED_CH_STATUS <> 'C'
+       WHERE PED_CH_SITUACAO <> 'C'
          AND SER_ST_CODIGO = 'PD'
+         AND TPD_IN_CODIGO NOT IN (212, 303, 617)
        GROUP BY REP_IN_CODIGO, TO_CHAR(PED_DT_EMISSAO, 'YYYY-MM')
     `;
-
     const result = await connection.execute(sql, {}, { outFormat: oracledb.OUT_FORMAT_OBJECT });
     return result.rows;
-
   } catch (err) {
     console.error("Erro ao buscar atingimento mensal:", err.message);
     throw err;
@@ -445,8 +405,7 @@ async function getAtingimentoMensal() {
 module.exports = {
   getPedidos,
   getRepresentantes,
-  getMetas,
-  upsertMeta,
+  getItensPedido,
   getFaturamentos,
   getItensFaturamento,
   getClientes,

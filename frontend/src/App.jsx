@@ -13,6 +13,8 @@ import AgendaCRM from './components/AgendaCRM';
 import TarefasCRM from './components/TarefasCRM';
 import ClienteCarteira from './components/ClienteCarteira';
 import ComissoesTable from './components/ComissoesTable';
+import PagamentosComissao from './components/PagamentosComissao';
+import VisaoGeralComissoes from './components/VisaoGeralComissoes';
 import { supabase } from './supabaseClient';
 import './App.css';
 
@@ -55,6 +57,14 @@ function App() {
   const [faturamentos, setFaturamentos] = useState([]);
   const [atingimentoMensal, setAtingimentoMensal] = useState([]);
   const [clientes, setClientes] = useState([]);
+  const [manualDates, setManualDates] = useState(() => {
+    const saved = localStorage.getItem('crm_manual_dates');
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  useEffect(() => {
+    localStorage.setItem('crm_manual_dates', JSON.stringify(manualDates));
+  }, [manualDates]);
 
   const fetchMetas = async () => {
     try {
@@ -156,7 +166,7 @@ function App() {
     fetchPedidos();
     fetchFaturamentos();
     if (activeTab === 'CLIENTES') fetchClientes();
-    if (activeTab === 'COMISSOES' || activeTab === 'RANKING') {
+    if (activeTab.startsWith('COMISSOES') || activeTab === 'RANKING' || activeTab === 'PAGAMENTOS') {
       fetchMetas();
       fetchAtingimento();
     }
@@ -242,7 +252,7 @@ function App() {
   // Filtro local por aba (Série)
   const filteredData = activeTab === 'all' 
     ? pedidos 
-    : activeTab === 'FAT'
+    : (activeTab === 'FAT' || activeTab.startsWith('COMISSOES') || activeTab === 'PAGAMENTOS')
       ? faturamentos
       : pedidos.filter(p => p.SER_ST_CODIGO === activeTab);
 
@@ -258,6 +268,65 @@ function App() {
   const valorLiquido = totalMercadoria - valorCanceladosSum;
   const valorFaturados = faturamentos.reduce((acc, curr) => acc + (curr.NOT_RE_VALORTOTAL || 0), 0);
   const count = filteredData.length;
+
+  // Cálculo de Comissões para Cards
+  const getCommissionValue = (fat, role) => {
+    let orderDate = fat.PEDIDOS_DATAS;
+    if (!orderDate && manualDates[fat.NOT_IN_NUMERO]) {
+      const parts = manualDates[fat.NOT_IN_NUMERO].split('-');
+      orderDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+
+    if (!orderDate) return 0;
+    const firstDate = orderDate.split(',')[0].trim();
+    const [day, month, year] = firstDate.split('/');
+    const mesAno = `${year}-${month}`;
+    const repId = Number(fat.REP_IN_CODIGO);
+
+    // Dados base de atingimento
+    const metaObj = metas.find(m => Number(m.rep_in_codigo) === repId && m.mes_ano === mesAno);
+    const valorMeta = metaObj ? metaObj.valor_meta : 0;
+    const realObj = atingimentoMensal.find(a => Number(a.REP_IN_CODIGO) === repId && a.MES_ANO === mesAno);
+    const valorRealizado = realObj ? realObj.TOTAL_REALIZADO : 0;
+    const atingimentoRep = valorMeta > 0 ? (valorRealizado / valorMeta) * 100 : 0;
+
+    let pct = 0;
+
+    if (role === 'COMISSOES_GERENTE') {
+      // Regra Gerente: Meta Geral do Mês
+      const totalMetaMes = metas.filter(m => m.mes_ano === mesAno).reduce((acc, curr) => acc + curr.valor_meta, 0);
+      const totalRealMes = atingimentoMensal.filter(a => a.MES_ANO === mesAno).reduce((acc, curr) => acc + curr.TOTAL_REALIZADO, 0);
+      const atingimentoGeral = totalMetaMes > 0 ? (totalRealMes / totalMetaMes) * 100 : 0;
+      pct = atingimentoGeral <= 85 ? 0.35 : 0.5;
+    } 
+    else if (role === 'COMISSOES_SUPERVISOR' || role === 'COMISSOES_EXECUTIVO') {
+      // Regra Supervisor/Executivo: Meta do Representante
+      pct = atingimentoRep <= 85 ? 0.15 : 0.25;
+    }
+    else if (role === 'COMISSOES_ASSISTENTE') {
+      // Regra Assistente: Fixo 0.05%
+      pct = 0.05;
+    }
+    else {
+      // Regra Representante (Padrão)
+      if (fat.REP_NOME && fat.REP_NOME.toUpperCase().includes('AIR SLAID')) {
+        pct = 1;
+      }
+      else if (valorMeta === 0) pct = 0;
+      else if (atingimentoRep <= 65) pct = 1;
+      else if (atingimentoRep <= 85) pct = 1.5;
+      else pct = 2;
+    }
+
+    return (fat.NOT_RE_VALORTOTAL || 0) * (pct / 100);
+  };
+
+  const totalComissao = activeTab.startsWith('COMISSOES') 
+    ? faturamentos.reduce((acc, fat) => acc + getCommissionValue(fat, activeTab), 0)
+    : 0;
+  const totalFaturadoComiss = activeTab.startsWith('COMISSOES')
+    ? faturamentos.reduce((acc, fat) => acc + (fat.NOT_RE_VALORTOTAL || 0), 0)
+    : 0;
 
   const formatCurrency = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
@@ -333,6 +402,8 @@ function App() {
                   {activeTab === 'METAS' && 'Gestão de Metas'}
                   {activeTab === 'RANKING' && 'Ranking: Meta x Realizado'}
                   {activeTab === 'FAT' && 'Relatório de Faturamento'}
+                  {activeTab === 'COMISSOES_GERAL' && 'Visão Geral de Comissões'}
+                  {activeTab === 'PAGAMENTOS' && 'Relatório de Pagamentos'}
                   {activeTab === 'USERS' && 'Gestão de Usuários'}
                 </h1>
                 {activeTab !== 'METAS' && activeTab !== 'USERS' && (
@@ -407,17 +478,19 @@ function App() {
                   <option value="200">BIG TELAS (200)</option>
                 </select>
               </div>
-              <div className="filter-group">
-                <label>Status</label>
-                <select value={status} onChange={(e) => setStatus(e.target.value)}>
-                  <option value="ALL">Todos</option>
-                  <option value="AP">Em Aberto</option>
-                  {activeTab !== 'PD' && <option value="B">Em Aprovação</option>}
-                  {activeTab !== 'OV' && <option value="F">Faturado</option>}
-                  <option value="C">Cancelado</option>
-                  {activeTab !== 'PD' && <option value="E">Encerrado</option>}
-                </select>
-              </div>
+              {activeTab !== 'PAGAMENTOS' && activeTab !== 'COMISSOES_GERAL' && (
+                <div className="filter-group">
+                  <label>Status</label>
+                  <select value={status} onChange={(e) => setStatus(e.target.value)}>
+                    <option value="ALL">Todos</option>
+                    <option value="AP">Em Aberto</option>
+                    {activeTab !== 'PD' && <option value="B">Em Aprovação</option>}
+                    {activeTab !== 'OV' && <option value="F">Faturado</option>}
+                    <option value="C">Cancelado</option>
+                    {activeTab !== 'PD' && <option value="E">Encerrado</option>}
+                  </select>
+                </div>
+              )}
               <div className="filter-group">
                 <label>Representante</label>
                 <select 
@@ -443,7 +516,7 @@ function App() {
               </div>
               <button 
                 onClick={() => {
-                  if (activeTab === 'FAT') {
+                  if (activeTab === 'FAT' || activeTab.startsWith('COMISSOES') || activeTab === 'PAGAMENTOS') {
                     fetchFaturamentos();
                   } else {
                     fetchPedidos();
@@ -481,8 +554,21 @@ function App() {
             <TarefasCRM allowedRepsList={allowedRepsList} permissions={permissions} session={session} />
           ) : activeTab === 'CLIENTES' ? (
             <ClienteCarteira clientes={clientes} />
-          ) : activeTab === 'COMISSOES' ? (
-            <ComissoesTable faturamentos={faturamentos} metas={metas} atingimentoMensal={atingimentoMensal} />
+          ) : activeTab === 'COMISSOES_GERAL' ? (
+            <VisaoGeralComissoes 
+              faturamentos={faturamentos} 
+              metas={metas} 
+              atingimentoMensal={atingimentoMensal} 
+              manualDates={manualDates}
+            />
+          ) : activeTab === 'PAGAMENTOS' ? (
+            <PagamentosComissao 
+              faturamentos={faturamentos} 
+              metas={metas} 
+              atingimentoMensal={atingimentoMensal} 
+              manualDates={manualDates} 
+              session={session}
+            />
           ) : (
             <>
               {currentMetaValue > 0 && (activeTab === 'PD' || activeTab === 'all') && (
@@ -510,12 +596,20 @@ function App() {
                 </div>
               )}
 
-              {activeTab !== 'USERS' && (
-                <section className="stats-grid" style={{ gridTemplateColumns: activeTab === 'FAT' ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(150px, 1fr))' }}>
+              {activeTab !== 'USERS' && activeTab !== 'PAGAMENTOS' && (
+                <section className="stats-grid" style={{ 
+                  gridTemplateColumns: activeTab === 'FAT' || activeTab.startsWith('COMISSOES') ? 'repeat(3, 1fr)' : 'repeat(auto-fit, minmax(150px, 1fr))' 
+                }}>
                   {activeTab === 'FAT' ? (
                     <>
                       <StatCard title="Valor Total Faturamento" value={formatCurrency(totalBruto)} />
                       <StatCard title="Qtd. de Notas Fiscais" value={count} />
+                    </>
+                  ) : activeTab.startsWith('COMISSOES') ? (
+                    <>
+                      <StatCard title="Valor Faturado" value={formatCurrency(totalFaturadoComiss)} />
+                      <StatCard title="Valor Total de Comissão" value={formatCurrency(totalComissao)} />
+                      <StatCard title="Quantidades de notas" value={count} />
                     </>
                   ) : (
                     <>
@@ -545,13 +639,27 @@ function App() {
                 activeTab !== 'USERS' && (
                   <section className="table-container">
                     <div className="print-only-summary" style={{ display: 'none' }}>
-                      <h1 style={{ margin: '0 0 10px 0' }}>Relatório de {activeTab === 'all' ? 'Registros' : activeTab === 'OV' ? 'Orçamentos' : activeTab === 'PD' ? 'Pedidos' : 'Desenvolvimentos'}</h1>
+                      <h1 style={{ margin: '0 0 10px 0' }}>Relatório de {
+                        activeTab === 'FAT' ? 'Faturamento' : 
+                        activeTab.startsWith('COMISSOES') ? 'Comissões' : 
+                        activeTab === 'all' ? 'Vendas' : activeTab
+                      }</h1>
                       <div style={{ display: 'flex', gap: '20px', marginBottom: '20px', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
-                        <span><strong>Total Bruto:</strong> {formatCurrency(totalBruto)}</span>
-                        <span><strong>Valor Líquido:</strong> {formatCurrency(valorLiquido)}</span>
-                        {activeTab !== 'OV' && activeTab !== 'DV' && <span><strong>Valor Faturado:</strong> {formatCurrency(valorFaturados)}</span>}
-                        <span><strong>Cancelados:</strong> {formatCurrency(valorCanceladosSum)}</span>
-                        <span><strong>Qtd:</strong> {count}</span>
+                        {activeTab.startsWith('COMISSOES') ? (
+                          <>
+                            <span><strong>Valor Faturado:</strong> {formatCurrency(totalFaturadoComiss)}</span>
+                            <span><strong>Total Comissão:</strong> {formatCurrency(totalComissao)}</span>
+                            <span><strong>Qtd Notas:</strong> {count}</span>
+                          </>
+                        ) : (
+                          <>
+                            <span><strong>Total Bruto:</strong> {formatCurrency(totalBruto)}</span>
+                            <span><strong>Valor Líquido:</strong> {formatCurrency(valorLiquido)}</span>
+                            {activeTab !== 'OV' && activeTab !== 'DV' && <span><strong>Valor Faturado:</strong> {formatCurrency(valorFaturados)}</span>}
+                            <span><strong>Cancelados:</strong> {formatCurrency(valorCanceladosSum)}</span>
+                            <span><strong>Qtd:</strong> {count}</span>
+                          </>
+                        )}
                       </div>
                     </div>
 
@@ -559,7 +667,8 @@ function App() {
                       <h2>Lista de {activeTab === 'all' ? 'Registros' : 
                                     activeTab === 'OV' ? 'Orçamentos' : 
                                     activeTab === 'PD' ? 'Pedidos' : 
-                                    activeTab === 'FAT' ? 'Faturamento' : 'Desenvolvimentos'}</h2>
+                                    activeTab === 'FAT' ? 'Faturamento' : 
+                                    activeTab === 'COMISSOES' ? 'Comissões' : 'Desenvolvimentos'}</h2>
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
                         <button 
                           onClick={() => window.print()}
@@ -595,7 +704,9 @@ function App() {
                             };
                             const headers = activeTab === 'FAT' 
                               ? ["NF Numero", "Pedido", "Emissao Ped.", "Serie", "Emissao", "Cod Cliente", "Cliente", "Representante", "Status", "Vlr Mercadoria", "Vlr Total"]
-                              : ["Pedido", "Tipo", "Emissao", "COD", "Cliente", "Representante", "Status", "VLR Liquido", "VLR Bruto"];
+                              : activeTab.startsWith('COMISSOES')
+                                ? ["NF Numero", "Pedido", "Emissao Ped.", "Emissao", "Cod Cliente", "Cliente", "Representante", "Vlr Total", "% Comiss.", "Vlr Comissao"]
+                                : ["Pedido", "Tipo", "Emissao", "COD", "Cliente", "Representante", "Status", "VLR Liquido", "VLR Bruto"];
                             
                             const dataToExport = activeTab === 'FAT' ? faturamentos : filteredData;
                             
@@ -613,6 +724,60 @@ function App() {
                                   p.NOT_CH_SITUACAO === 'N' || p.NOT_CH_SITUACAO === 'A' ? 'Ativa' : p.NOT_CH_SITUACAO,
                                   formatCurrency(p.NOT_RE_VALORMERCADORIA).replace(/\u00a0/g, ' '),
                                   formatCurrency(p.NOT_RE_VALORTOTAL).replace(/\u00a0/g, ' ')
+                                ];
+                              } else if (activeTab.startsWith('COMISSOES')) {
+                                let pctValue = 0;
+                                let orderDate = p.PEDIDOS_DATAS;
+                                if (!orderDate && manualDates[p.NOT_IN_NUMERO]) {
+                                  const pts = manualDates[p.NOT_IN_NUMERO].split('-');
+                                  orderDate = `${pts[2]}/${pts[1]}/${pts[0]}`;
+                                }
+                                
+                                if (orderDate) {
+                                  const firstD = orderDate.split(',')[0].trim();
+                                  const dParts = firstD.split('/');
+                                  if (dParts.length === 3) {
+                                    const mAno = `${dParts[2]}-${dParts[1]}`;
+                                    const rId = Number(p.REP_IN_CODIGO);
+                                    const mObj = metas.find(m => Number(m.rep_in_codigo) === rId && m.mes_ano === mAno);
+                                    const vMeta = mObj ? mObj.valor_meta : 0;
+                                    const rlObj = atingimentoMensal.find(a => Number(a.REP_IN_CODIGO) === rId && a.MES_ANO === mAno);
+                                    const vReal = rlObj ? rlObj.TOTAL_REALIZADO : 0;
+                                    const aRep = vMeta > 0 ? (vReal / vMeta) * 100 : 0;
+
+                                    if (activeTab === 'COMISSOES_REPS' && p.REP_NOME && p.REP_NOME.toUpperCase().includes('AIR SLAID')) {
+                                      pctValue = 1;
+                                    } else if (activeTab === 'COMISSOES_GERENTE') {
+                                      const tMetaM = metas.filter(m => m.mes_ano === mAno).reduce((a, c) => a + c.valor_meta, 0);
+                                      const tRealM = atingimentoMensal.filter(a => a.MES_ANO === mAno).reduce((a, c) => a + c.TOTAL_REALIZADO, 0);
+                                      const aGeral = tMetaM > 0 ? (tRealM / tMetaM) * 100 : 0;
+                                      pctValue = aGeral <= 85 ? 0.35 : 0.5;
+                                    } else if (activeTab === 'COMISSOES_SUPERVISOR' || activeTab === 'COMISSOES_EXECUTIVO') {
+                                      pctValue = aRep <= 85 ? 0.15 : 0.25;
+                                    } else if (activeTab === 'COMISSOES_ASSISTENTE') {
+                                      pctValue = 0.05;
+                                    } else {
+                                      if (vMeta === 0) pctValue = 0;
+                                      else if (aRep <= 65) pctValue = 1;
+                                      else if (aRep <= 85) pctValue = 1.5;
+                                      else pctValue = 2;
+                                    }
+                                  }
+                                }
+
+                                const vlrComm = (p.NOT_RE_VALORTOTAL || 0) * (pctValue / 100);
+
+                                return [
+                                  p.NOT_IN_NUMERO,
+                                  p.PEDIDOS || '',
+                                  p.PEDIDOS_DATAS || manualDates[p.NOT_IN_NUMERO] || '',
+                                  new Date(p.NOT_DT_EMISSAO).toLocaleDateString('pt-BR'),
+                                  p.AGN_IN_CODIGO,
+                                  p.CLIENTE_NOME,
+                                  p.REP_NOME || '',
+                                  formatCurrency(p.NOT_RE_VALORTOTAL).replace(/\u00a0/g, ' '),
+                                  `${pctValue}%`,
+                                  formatCurrency(vlrComm).replace(/\u00a0/g, ' ')
                                 ];
                               } else {
                                 return [
@@ -658,6 +823,15 @@ function App() {
                     
                     {activeTab === 'FAT' ? (
                       <FaturamentoTable faturamentos={faturamentos} />
+                    ) : activeTab.startsWith('COMISSOES') ? (
+                      <ComissoesTable 
+                        faturamentos={faturamentos} 
+                        metas={metas} 
+                        atingimentoMensal={atingimentoMensal} 
+                        manualDates={manualDates}
+                        onDateChange={(nf, date) => setManualDates(prev => ({ ...prev, [nf]: date }))}
+                        role={activeTab}
+                      />
                     ) : activeTab === 'CLIENTES' ? (
                       <ClienteCarteira clientes={clientes} />
                     ) : (
