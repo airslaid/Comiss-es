@@ -370,6 +370,7 @@ async function getClientes({ representante }) {
       connectString : "dbconnect.megaerp.online:4221/xepdb1"
     });
 
+    // Removendo temporariamente o filtro de representante para ver se os clientes aparecem
     let sql = `
       SELECT A.AGN_IN_CODIGO, 
              A.AGN_ST_NOME, 
@@ -377,34 +378,13 @@ async function getClientes({ representante }) {
              A.AGN_ST_MUNICIPIO, 
              A.UF_ST_SIGLA, 
              A.AGN_ST_EMAIL, 
-             A.AGN_ST_TELEFONE,
-             C.REP_IN_CODIGO
+             A.AGN_ST_TELEFONE
         FROM MEGA.GLO_AGENTES@AIR A
-        JOIN MEGA.GLO_CLIENTE@AIR C ON C.AGN_IN_CODIGO = A.AGN_IN_CODIGO
-       WHERE 1=1
+        WHERE EXISTS (SELECT 1 FROM MEGA.GLO_CLIENTE@AIR C WHERE C.AGN_IN_CODIGO = A.AGN_IN_CODIGO)
+        ORDER BY A.AGN_ST_NOME ASC
     `;
 
-    const binds = {};
-
-    if (representante) {
-      const repIds = representante.split(',').map(id => parseInt(id.trim(), 10)).filter(id => !isNaN(id));
-      if (repIds.length > 0) {
-        if (repIds.length === 1) {
-          sql += ` AND C.REP_IN_CODIGO = :representante`;
-          binds.representante = repIds[0];
-        } else {
-          const repPlaceholders = repIds.map((id, index) => `:rep${index}`).join(', ');
-          sql += ` AND C.REP_IN_CODIGO IN (${repPlaceholders})`;
-          repIds.forEach((id, index) => {
-            binds[`rep${index}`] = id;
-          });
-        }
-      }
-    }
-
-    sql += ` ORDER BY A.AGN_ST_NOME ASC`;
-
-    const result = await connection.execute(sql, binds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+    const result = await connection.execute(sql, {}, { outFormat: oracledb.OUT_FORMAT_OBJECT });
     return result.rows;
   } catch (err) {
     console.error("Erro ao buscar clientes:", err.message);
