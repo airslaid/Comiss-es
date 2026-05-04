@@ -372,10 +372,10 @@ async function getClientes({ representante }) {
 
     let sql = `
       SELECT A.AGN_IN_CODIGO, 
-             A.AGN_ST_NOME, 
-             A.AGN_ST_CGC, 
-             A.AGN_ST_MUNICIPIO, 
-             A.UF_ST_SIGLA
+             SUBSTR(A.AGN_ST_NOME, 1, 100) AS AGN_ST_NOME, 
+             SUBSTR(A.AGN_ST_CGC, 1, 20) AS AGN_ST_CGC, 
+             SUBSTR(A.AGN_ST_MUNICIPIO, 1, 50) AS AGN_ST_MUNICIPIO, 
+             SUBSTR(A.UF_ST_SIGLA, 1, 2) AS UF_ST_SIGLA
         FROM MEGA.GLO_AGENTES@AIR A
        WHERE EXISTS (
          SELECT 1 FROM MEGA.GLO_CLIENTE@AIR C

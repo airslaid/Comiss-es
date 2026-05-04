@@ -369,7 +369,7 @@ function App() {
             </div>
           </header>
 
-          {activeTab !== 'METAS' && activeTab !== 'USERS' && showFilters && (
+          {showFilters && activeTab !== 'CLIENTES' && activeTab !== 'METAS' && activeTab !== 'USERS' && (
             <div className="filters-panel" style={{ 
               backgroundColor: '#ffffff', 
               padding: '1rem', 
