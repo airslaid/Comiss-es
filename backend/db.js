@@ -372,7 +372,7 @@ async function getClientes({ representante }) {
 
     let sql = `
       SELECT C.AGN_IN_CODIGO, 
-             (SELECT TO_CHAR(SUBSTR(A.AGN_ST_NOME, 1, 50)) FROM MEGA.GLO_AGENTES@AIR A 
+             (SELECT TO_CHAR(SUBSTR(A.AGN_ST_NOME, 1, 80)) FROM MEGA.GLO_AGENTES@AIR A 
                WHERE A.AGN_TAB_IN_CODIGO = C.AGN_TAB_IN_CODIGO 
                  AND A.AGN_PAD_IN_CODIGO = C.AGN_PAD_IN_CODIGO 
                  AND A.AGN_IN_CODIGO = C.AGN_IN_CODIGO 
@@ -382,7 +382,16 @@ async function getClientes({ representante }) {
                  AND A.AGN_PAD_IN_CODIGO = C.AGN_PAD_IN_CODIGO 
                  AND A.AGN_IN_CODIGO = C.AGN_IN_CODIGO 
                  AND ROWNUM = 1) AS AGN_ST_CGC,
-             'UF' AS UF_ST_SIGLA
+             (SELECT TO_CHAR(SUBSTR(A.AGN_ST_MUNICIPIO, 1, 50)) FROM MEGA.GLO_AGENTES@AIR A 
+               WHERE A.AGN_TAB_IN_CODIGO = C.AGN_TAB_IN_CODIGO 
+                 AND A.AGN_PAD_IN_CODIGO = C.AGN_PAD_IN_CODIGO 
+                 AND A.AGN_IN_CODIGO = C.AGN_IN_CODIGO 
+                 AND ROWNUM = 1) AS AGN_ST_MUNICIPIO,
+             (SELECT TO_CHAR(SUBSTR(A.UF_ST_SIGLA, 1, 2)) FROM MEGA.GLO_AGENTES@AIR A 
+               WHERE A.AGN_TAB_IN_CODIGO = C.AGN_TAB_IN_CODIGO 
+                 AND A.AGN_PAD_IN_CODIGO = C.AGN_PAD_IN_CODIGO 
+                 AND A.AGN_IN_CODIGO = C.AGN_IN_CODIGO 
+                 AND ROWNUM = 1) AS UF_ST_SIGLA
         FROM MEGA.GLO_CLIENTE@AIR C
        WHERE ROWNUM <= 100
     `;
@@ -395,7 +404,8 @@ async function getClientes({ representante }) {
       AGN_IN_CODIGO: row[0] || 'N/A',
       AGN_ST_NOME: row[1] || 'NOME NÃO ENCONTRADO',
       AGN_ST_CGC: row[2] || '000',
-      UF_ST_SIGLA: row[3] || 'UF'
+      AGN_ST_MUNICIPIO: row[3] || '',
+      UF_ST_SIGLA: row[4] || ''
     }));
   } catch (err) {
     console.error("Erro ao buscar clientes:", err.message);
