@@ -371,11 +371,19 @@ async function getClientes({ representante }) {
     });
 
     let sql = `
-      SELECT AGN_IN_CODIGO, 
-             'TESTE' AS AGN_ST_NOME, 
-             '000' AS AGN_ST_CGC, 
+      SELECT C.AGN_IN_CODIGO, 
+             (SELECT TO_CHAR(SUBSTR(A.AGN_ST_NOME, 1, 50)) FROM MEGA.GLO_AGENTES@AIR A 
+               WHERE A.AGN_TAB_IN_CODIGO = C.AGN_TAB_IN_CODIGO 
+                 AND A.AGN_PAD_IN_CODIGO = C.AGN_PAD_IN_CODIGO 
+                 AND A.AGN_IN_CODIGO = C.AGN_IN_CODIGO 
+                 AND ROWNUM = 1) AS AGN_ST_NOME,
+             (SELECT TO_CHAR(SUBSTR(A.AGN_ST_CGC, 1, 20)) FROM MEGA.GLO_AGENTES@AIR A 
+               WHERE A.AGN_TAB_IN_CODIGO = C.AGN_TAB_IN_CODIGO 
+                 AND A.AGN_PAD_IN_CODIGO = C.AGN_PAD_IN_CODIGO 
+                 AND A.AGN_IN_CODIGO = C.AGN_IN_CODIGO 
+                 AND ROWNUM = 1) AS AGN_ST_CGC,
              'UF' AS UF_ST_SIGLA
-        FROM MEGA.GLO_CLIENTE@AIR
+        FROM MEGA.GLO_CLIENTE@AIR C
        WHERE ROWNUM <= 100
     `;
 
