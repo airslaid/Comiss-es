@@ -375,9 +375,7 @@ async function getClientes({ representante }) {
              A.AGN_ST_NOME, 
              A.AGN_ST_CGC, 
              A.AGN_ST_MUNICIPIO, 
-             A.UF_ST_SIGLA, 
-             A.AGN_ST_EMAIL, 
-             A.AGN_ST_TELEFONE
+             A.UF_ST_SIGLA
         FROM MEGA.GLO_AGENTES@AIR A
        WHERE EXISTS (
          SELECT 1 FROM MEGA.GLO_CLIENTE@AIR C
@@ -388,30 +386,6 @@ async function getClientes({ representante }) {
     `;
 
     const binds = {};
-
-    if (representante && representante !== 'ALL' && representante !== '') {
-      const repIds = representante.split(',').map(id => parseInt(id.trim(), 10)).filter(id => !isNaN(id));
-      if (repIds.length > 0) {
-        if (repIds.length === 1) {
-          sql += ` AND EXISTS (SELECT 1 FROM MEGA.GLO_CLIENTE@AIR C2 
-                               WHERE C2.AGN_IN_CODIGO = A.AGN_IN_CODIGO 
-                                 AND C2.AGN_TAB_IN_CODIGO = A.AGN_TAB_IN_CODIGO
-                                 AND C2.AGN_PAD_IN_CODIGO = A.AGN_PAD_IN_CODIGO
-                                 AND C2.REP_IN_CODIGO = :representante)`;
-          binds.representante = repIds[0];
-        } else {
-          const repPlaceholders = repIds.map((id, index) => `:rep${index}`).join(', ');
-          sql += ` AND EXISTS (SELECT 1 FROM MEGA.GLO_CLIENTE@AIR C2 
-                               WHERE C2.AGN_IN_CODIGO = A.AGN_IN_CODIGO 
-                                 AND C2.AGN_TAB_IN_CODIGO = A.AGN_TAB_IN_CODIGO
-                                 AND C2.AGN_PAD_IN_CODIGO = A.AGN_PAD_IN_CODIGO
-                                 AND C2.REP_IN_CODIGO IN (${repPlaceholders}))`;
-          repIds.forEach((id, index) => {
-            binds[`rep${index}`] = id;
-          });
-        }
-      }
-    }
 
     sql += ` ORDER BY A.AGN_ST_NOME ASC`;
 
