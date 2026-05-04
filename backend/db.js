@@ -371,12 +371,21 @@ async function getClientes({ representante }) {
     });
 
     let sql = `
-      SELECT A.AGN_IN_CODIGO, 
-             SUBSTR(A.AGN_ST_NOME, 1, 100) AS AGN_ST_NOME, 
-             SUBSTR(A.AGN_ST_CGC, 1, 20) AS AGN_ST_CGC, 
-             SUBSTR(A.AGN_ST_MUNICIPIO, 1, 50) AS AGN_ST_MUNICIPIO, 
-             SUBSTR(A.UF_ST_SIGLA, 1, 2) AS UF_ST_SIGLA
-        FROM MEGA.GLO_AGENTES@AIR A
+      SELECT AGN_IN_CODIGO, 
+             AGN_ST_NOME, 
+             AGN_ST_CGC, 
+             AGN_ST_MUNICIPIO, 
+             UF_ST_SIGLA
+        FROM (
+          SELECT A.AGN_IN_CODIGO, 
+                 CAST(A.AGN_ST_NOME AS VARCHAR2(100)) AS AGN_ST_NOME, 
+                 CAST(A.AGN_ST_CGC AS VARCHAR2(20)) AS AGN_ST_CGC, 
+                 CAST(A.AGN_ST_MUNICIPIO AS VARCHAR2(50)) AS AGN_ST_MUNICIPIO, 
+                 CAST(A.UF_ST_SIGLA AS VARCHAR2(2)) AS UF_ST_SIGLA,
+                 A.AGN_TAB_IN_CODIGO,
+                 A.AGN_PAD_IN_CODIGO
+          FROM MEGA.GLO_AGENTES@AIR A
+        ) A
        WHERE EXISTS (
          SELECT 1 FROM MEGA.GLO_CLIENTE@AIR C
           WHERE C.AGN_TAB_IN_CODIGO = A.AGN_TAB_IN_CODIGO
