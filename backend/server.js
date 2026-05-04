@@ -33,7 +33,21 @@ app.get('/api/representantes', async (req, res) => {
 app.get('/api/clientes', async (req, res) => {
   try {
     const { representante } = req.query;
-    const clientes = await getClientes({ representante });
+    let clientes = await getClientes({ representante });
+    
+    // DEBUG: Se não trouxer nada, envia um registro fake para sabermos se a API respondeu
+    if (!clientes || clientes.length === 0) {
+      clientes = [{
+        AGN_IN_CODIGO: 9999,
+        AGN_ST_NOME: "TESTE DE CONEXAO (API OK, SQL VAZIO)",
+        AGN_ST_CGC: "00.000.000/0001-00",
+        AGN_ST_MUNICIPIO: "DEBUG",
+        UF_ST_SIGLA: "DB",
+        AGN_ST_EMAIL: "teste@teste.com",
+        AGN_ST_TELEFONE: "(00) 0000-0000"
+      }];
+    }
+    
     res.json(clientes);
   } catch (error) {
     console.error("Erro na rota /api/clientes:", error);
