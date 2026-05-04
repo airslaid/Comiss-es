@@ -43,7 +43,7 @@ function App() {
   const [permissions, setPermissions] = useState(null);
   
   // Estados dos Filtros
-  const [activeTab, setActiveTab] = useState('all');
+  const [activeTab, setActiveTab] = useState('FAT');
   const [filial, setFilial] = useState('ALL');
   const [startDate, setStartDate] = useState(defaultStart);
   const [endDate, setEndDate] = useState(defaultEnd);
