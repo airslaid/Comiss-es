@@ -12,6 +12,7 @@ import UserManagement from './components/UserManagement';
 import AgendaCRM from './components/AgendaCRM';
 import TarefasCRM from './components/TarefasCRM';
 import ClienteCarteira from './components/ClienteCarteira';
+import ComissoesTable from './components/ComissoesTable';
 import { supabase } from './supabaseClient';
 import './App.css';
 
@@ -465,10 +466,7 @@ function App() {
           ) : activeTab === 'CLIENTES' ? (
             <ClienteCarteira clientes={clientes} />
           ) : activeTab === 'COMISSOES' ? (
-            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-main)' }}>
-              <h2 style={{ marginBottom: '1rem' }}>Módulo de Comissões</h2>
-              <p style={{ color: 'var(--text-muted)' }}>Configurações e regras de comissionamento em desenvolvimento...</p>
-            </div>
+            <ComissoesTable faturamentos={faturamentos} />
           ) : (
             <>
               {currentMetaValue > 0 && (activeTab === 'PD' || activeTab === 'all') && (
