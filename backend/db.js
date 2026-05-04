@@ -372,33 +372,17 @@ async function getClientes({ representante }) {
 
     let sql = `
       SELECT AGN_IN_CODIGO, 
-             AGN_ST_NOME, 
-             AGN_ST_CGC, 
-             UF_ST_SIGLA
-        FROM (
-          SELECT A.AGN_IN_CODIGO, 
-                 CAST(A.AGN_ST_NOME AS VARCHAR2(100)) AS AGN_ST_NOME, 
-                 CAST(A.AGN_ST_CGC AS VARCHAR2(20)) AS AGN_ST_CGC, 
-                 CAST(A.UF_ST_SIGLA AS VARCHAR2(2)) AS UF_ST_SIGLA,
-                 A.AGN_TAB_IN_CODIGO,
-                 A.AGN_PAD_IN_CODIGO
-          FROM MEGA.GLO_AGENTES@AIR A
-        ) A
-       WHERE EXISTS (
-         SELECT 1 FROM MEGA.GLO_CLIENTE@AIR C
-          WHERE C.AGN_TAB_IN_CODIGO = A.AGN_TAB_IN_CODIGO
-            AND C.AGN_PAD_IN_CODIGO = A.AGN_PAD_IN_CODIGO
-            AND C.AGN_IN_CODIGO = A.AGN_IN_CODIGO
-       )
+             'CLIENTE ' || AGN_IN_CODIGO AS AGN_ST_NOME, 
+             '000' AS AGN_ST_CGC, 
+             'UF' AS UF_ST_SIGLA
+        FROM MEGA.GLO_CLIENTE@AIR
+       WHERE ROWNUM <= 100
     `;
 
     const binds = {};
 
-    sql += ` ORDER BY AGN_ST_NOME ASC`;
-
     const result = await connection.execute(sql, binds, { outFormat: oracledb.OUT_FORMAT_ARRAY });
     
-    // Mapeando manualmente o array para objeto para evitar o erro de metadados das colunas ocultas
     return result.rows.map(row => ({
       AGN_IN_CODIGO: row[0],
       AGN_ST_NOME: row[1],
