@@ -379,28 +379,25 @@ async function getClientes({ representante }) {
              A.AGN_ST_EMAIL, 
              A.AGN_ST_TELEFONE
         FROM MEGA.GLO_AGENTES@AIR A
-        JOIN MEGA.GLO_CLIENTE@AIR C 
-          ON C.AGN_TAB_IN_CODIGO = A.AGN_TAB_IN_CODIGO
-         AND C.AGN_PAD_IN_CODIGO = A.AGN_PAD_IN_CODIGO
-         AND C.AGN_IN_CODIGO = A.AGN_IN_CODIGO
-       WHERE 1=1
+       WHERE A.AGN_IN_CODIGO IN (SELECT C.AGN_IN_CODIGO FROM MEGA.GLO_CLIENTE@AIR C)
     `;
 
     const binds = {};
 
-    if (representante && representante !== 'ALL') {
-      // Nota: Como não temos certeza se REP_IN_CODIGO está em GLO_CLIENTE ou em outra tabela,
-      // vamos tentar filtrar via subquery na VEN_PEDIDOVENDA (clientes que já compraram com esse rep)
-      // ou assumir que existe REP_IN_CODIGO em GLO_CLIENTE por enquanto.
-      // Se der erro, saberemos que a coluna não existe.
+    // Se o representante for informado e não for ADMIN (Todas/ALL)
+    if (representante && representante !== 'ALL' && representante !== '') {
+      // Filtrar clientes vinculados ao representante
+      // Algumas versões do Mega usam GLO_AGENTES_REP ou VEN_CLIENTE
+      // Vou tentar filtrar via pedidos (clientes que o representante já atendeu) 
+      // ou assumir que existe REP_IN_CODIGO em GLO_CLIENTE.
       const repIds = representante.split(',').map(id => parseInt(id.trim(), 10)).filter(id => !isNaN(id));
       if (repIds.length > 0) {
         if (repIds.length === 1) {
-          sql += ` AND C.REP_IN_CODIGO = :representante`;
+          sql += ` AND EXISTS (SELECT 1 FROM MEGA.GLO_CLIENTE@AIR C2 WHERE C2.AGN_IN_CODIGO = A.AGN_IN_CODIGO AND C2.REP_IN_CODIGO = :representante)`;
           binds.representante = repIds[0];
         } else {
           const repPlaceholders = repIds.map((id, index) => `:rep${index}`).join(', ');
-          sql += ` AND C.REP_IN_CODIGO IN (${repPlaceholders})`;
+          sql += ` AND EXISTS (SELECT 1 FROM MEGA.GLO_CLIENTE@AIR C2 WHERE C2.AGN_IN_CODIGO = A.AGN_IN_CODIGO AND C2.REP_IN_CODIGO IN (${repPlaceholders}))`;
           repIds.forEach((id, index) => {
             binds[`rep${index}`] = id;
           });
