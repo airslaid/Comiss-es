@@ -163,6 +163,35 @@ const PipelineCRM = ({ pedidos }) => {
     }
   };
 
+  const isHotLead = (p) => {
+    const saved = pipelineData.find(pl =>
+      pl.org_in_codigo === p.ORG_IN_CODIGO &&
+      pl.ser_st_codigo === p.SER_ST_CODIGO &&
+      pl.ped_in_codigo === p.PED_IN_CODIGO
+    );
+    return saved?.hot_lead === true;
+  };
+
+  const toggleHotLead = async (e, p) => {
+    e.stopPropagation();
+    const current = isHotLead(p);
+    try {
+      await fetch('http://localhost:3001/api/crm/pipeline/hot-lead', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          org_in_codigo: p.ORG_IN_CODIGO,
+          ser_st_codigo: p.SER_ST_CODIGO,
+          ped_in_codigo: p.PED_IN_CODIGO,
+          hot_lead: !current
+        })
+      });
+      fetchPipeline();
+    } catch (err) {
+      console.error("Erro ao atualizar lead quente:", err);
+    }
+  };
+
   // Filtrar apenas Orçamentos (OV)
   const orcamentos = useMemo(() => {
     return pedidos.filter(p => p.SER_ST_CODIGO === 'OV');
@@ -215,7 +244,22 @@ const PipelineCRM = ({ pedidos }) => {
   if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Carregando CRM...</div>;
 
   return (
-    <div className="crm-pipeline" style={{ 
+    <>
+      <style>{`
+        @keyframes hotPulse {
+          0%   { box-shadow: 0 0 0 0 rgba(239,68,68,0.6), 0 1px 2px rgba(0,0,0,0.05); border-color: #ef4444; }
+          50%  { box-shadow: 0 0 12px 4px rgba(251,146,60,0.5), 0 1px 2px rgba(0,0,0,0.05); border-color: #f97316; }
+          100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.6), 0 1px 2px rgba(0,0,0,0.05); border-color: #ef4444; }
+        }
+        .hot-lead-card {
+          animation: hotPulse 1.6s ease-in-out infinite;
+          background: linear-gradient(135deg, #fff7ed 0%, #ffffff 60%) !important;
+        }
+        .hot-badge {
+          animation: hotPulse 1.6s ease-in-out infinite;
+        }
+      `}</style>
+      <div className="crm-pipeline" style={{ 
       display: 'flex', 
       gap: '0.75rem', 
       height: 'calc(100vh - 120px)', 
@@ -287,11 +331,12 @@ const PipelineCRM = ({ pedidos }) => {
                   e.dataTransfer.setData('pedido', JSON.stringify(p));
                 }}
                 onClick={() => fetchItems(p)}
+                className={isHotLead(p) ? 'hot-lead-card' : ''}
                 style={{
                   backgroundColor: '#ffffff',
-                  padding: '0.6rem', // Reduzido para caber melhor
+                  padding: '0.6rem',
                   borderRadius: '4px',
-                  border: '1px solid #e2e8f0',
+                  border: isHotLead(p) ? '1px solid #ef4444' : '1px solid #e2e8f0',
                   boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
                   cursor: (stage !== 'FECHADO (GANHO)' && stage !== 'CANCELADO') ? 'grab' : 'pointer',
                   opacity: (stage === 'FECHADO (GANHO)' || stage === 'CANCELADO') ? 0.8 : 1,
@@ -303,9 +348,14 @@ const PipelineCRM = ({ pedidos }) => {
                   overflow: 'hidden'
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem', minWidth: 0, overflow: 'hidden' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem', minWidth: 0, overflow: 'hidden', alignItems: 'center' }}>
                   <span style={{ fontSize: '0.7rem', fontWeight: '700', color: 'var(--accent-color)', whiteSpace: 'nowrap' }}>#{p.PED_IN_CODIGO}</span>
-                  <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{new Date(p.PED_DT_EMISSAO).toLocaleDateString('pt-BR')}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                    {isHotLead(p) && (
+                      <span style={{ fontSize: '0.55rem', fontWeight: '800', backgroundColor: '#ef4444', color: 'white', padding: '0.05rem 0.3rem', borderRadius: '4px', letterSpacing: '0.5px' }}>QUENTE</span>
+                    )}
+                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{new Date(p.PED_DT_EMISSAO).toLocaleDateString('pt-BR')}</span>
+                  </div>
                 </div>
                 <div style={{ marginBottom: '0.4rem', minWidth: 0, overflow: 'hidden' }}>
                   <div style={{ 
@@ -328,6 +378,16 @@ const PipelineCRM = ({ pedidos }) => {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '0.85rem', fontWeight: '800', color: '#059669' }}>{formatCurrency(p.PED_RE_VLMERCADORIA)}</span>
+                  <button
+                    onClick={(e) => toggleHotLead(e, p)}
+                    title={isHotLead(p) ? 'Remover Lead Quente' : 'Marcar como Lead Quente'}
+                    style={{
+                      background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem',
+                      padding: '0.1rem', opacity: isHotLead(p) ? 1 : 0.3,
+                      transition: 'opacity 0.2s, transform 0.2s',
+                      transform: isHotLead(p) ? 'scale(1.2)' : 'scale(1)'
+                    }}
+                  >🔥</button>
                 </div>
               </div>
             ))}
@@ -681,6 +741,7 @@ const PipelineCRM = ({ pedidos }) => {
         </div>
       )}
     </div>
+    </>
   );
 };
 

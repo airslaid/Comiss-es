@@ -43,7 +43,19 @@ async function getPedidos({ startDate, endDate, filial, status, representante, i
                 FROM MEGA.VEN_PEDPROGENTREGA@AIR PE 
                WHERE PE.ORG_IN_CODIGO = P.ORG_IN_CODIGO 
                  AND PE.SER_ST_CODIGO = P.SER_ST_CODIGO 
-                 AND PE.PED_IN_CODIGO = P.PED_IN_CODIGO) AS PED_DT_ENTREGA
+                 AND PE.PED_IN_CODIGO = P.PED_IN_CODIGO) AS PED_DT_ENTREGA,
+             (SELECT LISTAGG(NF.NOT_IN_NUMERO, ', ') WITHIN GROUP (ORDER BY NF.NOT_IN_NUMERO)
+                FROM (SELECT DISTINCT NF_NOT_IN_CODIGO, PE_ORG_IN_CODIGO, PE_SER_ST_CODIGO, PE_PED_IN_CODIGO FROM MEGA.VEN_ITEMPEDI_VEN_ITEMNOT@AIR) M
+                JOIN MEGA.VEN_NOTAFISCAL@AIR NF ON NF.NOT_IN_CODIGO = M.NF_NOT_IN_CODIGO
+               WHERE M.PE_ORG_IN_CODIGO = P.ORG_IN_CODIGO
+                 AND M.PE_SER_ST_CODIGO = P.SER_ST_CODIGO
+                 AND M.PE_PED_IN_CODIGO = P.PED_IN_CODIGO) AS NOTAS_FISCAIS,
+             (SELECT LISTAGG(TO_CHAR(NF.NOT_DT_EMISSAO, 'DD/MM/YYYY'), ', ') WITHIN GROUP (ORDER BY NF.NOT_DT_EMISSAO)
+                FROM (SELECT DISTINCT NF_NOT_IN_CODIGO, PE_ORG_IN_CODIGO, PE_SER_ST_CODIGO, PE_PED_IN_CODIGO FROM MEGA.VEN_ITEMPEDI_VEN_ITEMNOT@AIR) M
+                JOIN MEGA.VEN_NOTAFISCAL@AIR NF ON NF.NOT_IN_CODIGO = M.NF_NOT_IN_CODIGO
+               WHERE M.PE_ORG_IN_CODIGO = P.ORG_IN_CODIGO
+                 AND M.PE_SER_ST_CODIGO = P.SER_ST_CODIGO
+                 AND M.PE_PED_IN_CODIGO = P.PED_IN_CODIGO) AS DATAS_FATURAMENTO
         FROM MEGA.VEN_PEDIDOVENDA@AIR P
    LEFT JOIN MEGA.GLO_AGENTES@AIR A 
           ON A.AGN_TAB_IN_CODIGO = P.CLI_TAB_IN_CODIGO
@@ -82,8 +94,19 @@ async function getPedidos({ startDate, endDate, filial, status, representante, i
     }
 
     if (representante) {
-      sql += ` AND P.REP_IN_CODIGO = :representante`;
-      binds.representante = parseInt(representante, 10);
+      const repIds = representante.split(',').map(id => parseInt(id.trim(), 10)).filter(id => !isNaN(id));
+      if (repIds.length > 0) {
+        if (repIds.length === 1) {
+          sql += ` AND P.REP_IN_CODIGO = :representante`;
+          binds.representante = repIds[0];
+        } else {
+          const repPlaceholders = repIds.map((id, index) => `:rep${index}`).join(', ');
+          sql += ` AND P.REP_IN_CODIGO IN (${repPlaceholders})`;
+          repIds.forEach((id, index) => {
+            binds[`rep${index}`] = id;
+          });
+        }
+      }
     }
 
     // Usamos TO_DATE para garantir a comparação correta no Oracle
@@ -256,8 +279,19 @@ async function getFaturamentos({ startDate, endDate, filial, representante }) {
     }
 
     if (representante) {
-      sql += ` AND N.REP_IN_CODIGO = :representante`;
-      binds.representante = parseInt(representante, 10);
+      const repIds = representante.split(',').map(id => parseInt(id.trim(), 10)).filter(id => !isNaN(id));
+      if (repIds.length > 0) {
+        if (repIds.length === 1) {
+          sql += ` AND N.REP_IN_CODIGO = :representante`;
+          binds.representante = repIds[0];
+        } else {
+          const repPlaceholders = repIds.map((id, index) => `:rep${index}`).join(', ');
+          sql += ` AND N.REP_IN_CODIGO IN (${repPlaceholders})`;
+          repIds.forEach((id, index) => {
+            binds[`rep${index}`] = id;
+          });
+        }
+      }
     }
 
     if (startDate && endDate) {

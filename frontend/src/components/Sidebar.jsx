@@ -1,9 +1,17 @@
 import { useState } from 'react';
 
-const Sidebar = ({ activeTab, setActiveTab }) => {
+const Sidebar = ({ activeTab, setActiveTab, permissions, session }) => {
   const [crmExpanded, setCrmExpanded] = useState(true);
 
-  const menuItems = [
+  const role = permissions?.role || 'USER';
+  const allowedModules = permissions?.allowed_modules || ['all'];
+
+  const isAllowed = (id) => {
+    if (role === 'ADMIN') return true;
+    return allowedModules.includes(id);
+  };
+
+  const rawMenuItems = [
     { id: 'all', label: 'Visão Geral', icon: (
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="3" width="7" height="7"></rect>
@@ -25,6 +33,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
         { id: 'CRM_PIPELINE', label: 'Pipeline' },
         { id: 'CRM_FOLLOWUP', label: 'Follow Up' },
         { id: 'CRM_AGENDA', label: 'Agenda' },
+        { id: 'CRM_TAREFAS', label: 'Tarefas' },
       ]
     },
     { id: 'OV', label: 'Orçamentos', icon: (
@@ -67,7 +76,33 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
         <circle cx="12" cy="12" r="2"></circle>
       </svg>
     ) },
+    { id: 'USERS', label: 'Gestão de Usuários', icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+        <circle cx="9" cy="7" r="4"></circle>
+        <polyline points="23 11 20 11 17 11"></polyline>
+      </svg>
+    ) },
   ];
+
+  // Filtra os itens baseado na permissão
+  const menuItems = rawMenuItems
+    .filter(item => {
+      if (item.isParent) {
+        // Se for pai (CRM), mostra se algum filho for permitido
+        return item.subItems.some(sub => isAllowed(sub.id));
+      }
+      return isAllowed(item.id);
+    })
+    .map(item => {
+      if (item.isParent) {
+        return {
+          ...item,
+          subItems: item.subItems.filter(sub => isAllowed(sub.id))
+        };
+      }
+      return item;
+    });
 
   return (
     <div className="sidebar">
@@ -131,9 +166,9 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
       <div className="sidebar-footer">
         <div className="user-info">
           <span className="user-label">Usuário</span>
-          <div className="user-name">
+          <div className="user-name" style={{ fontSize: '0.85rem', fontWeight: '700', marginTop: '0.2rem' }}>
             <span className="status-dot"></span>
-            Patrick
+            {session?.user?.user_metadata?.name || session?.user?.email?.split('@')[0] || 'Carregando...'}
           </div>
         </div>
       </div>

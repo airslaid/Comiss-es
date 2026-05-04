@@ -100,14 +100,14 @@ const OrdersTable = ({ pedidos }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 15;
 
-  if (!pedidos || pedidos.length === 0) {
-    return <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Nenhum pedido encontrado.</div>;
-  }
-
   // Resetar página quando os pedidos mudarem (filtros aplicados)
   useEffect(() => {
     setCurrentPage(1);
   }, [pedidos]);
+
+  if (!pedidos || pedidos.length === 0) {
+    return <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Nenhum pedido encontrado.</div>;
+  }
 
   const totalPages = Math.ceil(sortedData.length / rowsPerPage);
   const indexOfLastRow = currentPage * rowsPerPage;
@@ -438,7 +438,14 @@ const OrdersTable = ({ pedidos }) => {
             alignItems: 'center',
             backgroundColor: 'var(--bg-color)'
           }}>
-            <h2 style={{ margin: 0, fontSize: '1rem' }}>Itens do Pedido #{selectedPedido.PED_IN_CODIGO}</h2>
+            <div>
+              <h2 style={{ margin: 0, fontSize: '1rem' }}>Itens do Pedido #{selectedPedido.PED_IN_CODIGO}</h2>
+              {selectedPedido.NOTAS_FISCAIS && (
+                <div style={{ marginTop: '0.25rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  <strong>NFs:</strong> {selectedPedido.NOTAS_FISCAIS} | <strong>Faturado em:</strong> {selectedPedido.DATAS_FATURAMENTO}
+                </div>
+              )}
+            </div>
               <button 
                 onClick={() => setSelectedPedido(null)}
                 style={{ 

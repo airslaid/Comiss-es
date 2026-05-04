@@ -1,4 +1,5 @@
 import React from 'react';
+import StatCard from './StatCard';
 
 const RankingMetas = ({ pedidos, metas, representantes, startDate }) => {
   const formatCurrency = (value) => {
@@ -39,8 +40,17 @@ const RankingMetas = ({ pedidos, metas, representantes, startDate }) => {
     return '#10b981'; // Verde
   };
 
+  const totalMeta = ranking.reduce((acc, curr) => acc + curr.meta, 0);
+  const totalRealizado = ranking.reduce((acc, curr) => acc + curr.realizado, 0);
+
   return (
-    <div className="table-container">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      <section className="stats-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
+        <StatCard title="Total Meta" value={formatCurrency(totalMeta)} />
+        <StatCard title="Total Realizado" value={formatCurrency(totalRealizado)} />
+      </section>
+
+      <div className="table-container">
       <div className="table-header-bar" style={{ padding: '0.5rem 0.75rem' }}>
         <h2 style={{ fontSize: '0.9rem' }}>Ranking de Atingimento por Representante</h2>
       </div>
@@ -103,6 +113,7 @@ const RankingMetas = ({ pedidos, metas, representantes, startDate }) => {
           </tbody>
         </table>
       </div>
+    </div>
     </div>
   );
 };

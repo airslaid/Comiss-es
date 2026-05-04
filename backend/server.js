@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { getPedidos, getRepresentantes, getItensPedido, getFaturamentos, getItensFaturamento } = require('./db');
-const supabase = require('./supabase');
+const { supabase, supabaseAdmin } = require('./supabase');
 
 const app = express();
 const PORT = 3001;
@@ -135,6 +135,158 @@ app.post('/api/crm/pipeline', async (req, res) => {
   } catch (error) {
     console.error("Erro na rota POST /api/crm/pipeline:", error);
     res.status(500).json({ error: "Erro ao salvar estágio do pipeline." });
+  }
+});
+
+app.patch('/api/crm/pipeline/hot-lead', async (req, res) => {
+  try {
+    const { org_in_codigo, ser_st_codigo, ped_in_codigo, hot_lead } = req.body;
+
+    const { error } = await supabase
+      .from('crm_pipeline')
+      .upsert(
+        { org_in_codigo, ser_st_codigo, ped_in_codigo, hot_lead, updated_at: new Date() },
+        { onConflict: 'org_in_codigo,ser_st_codigo,ped_in_codigo' }
+      );
+
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Erro na rota PATCH /api/crm/pipeline/hot-lead:", error);
+    res.status(500).json({ error: "Erro ao atualizar lead quente." });
+  }
+});
+
+// --- Gestão de Usuários (Auth Admin) ---
+app.post('/api/auth/create-user', async (req, res) => {
+  try {
+    if (!supabaseAdmin) {
+      return res.status(500).json({ error: "Configuração do Supabase Admin ausente (SERVICE_ROLE_KEY)." });
+    }
+
+    const { email, password, name } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: "E-mail e senha são obrigatórios." });
+    }
+
+    const { data, error } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true, // Confirmar automaticamente
+      user_metadata: { name: name || '' }
+    });
+
+    if (error) throw error;
+
+    // Criar permissão inicial para o usuário
+    const { error: permError } = await supabaseAdmin
+      .from('user_permissions')
+      .insert({ 
+        user_id: data.user.id, 
+        role: 'USER', 
+        allowed_modules: ['all'] // Visão Geral por padrão
+      });
+
+    if (permError) console.error("Erro ao criar permissão inicial:", permError);
+
+    res.json({ success: true, user: data.user });
+  } catch (error) {
+    console.error("Erro na rota POST /api/auth/create-user:", error);
+    res.status(500).json({ error: error.message || "Erro ao criar usuário." });
+  }
+});
+
+app.get('/api/auth/users', async (req, res) => {
+  try {
+    if (!supabaseAdmin) {
+      return res.status(500).json({ error: "Configuração do Supabase Admin ausente." });
+    }
+
+    const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
+    if (error) throw error;
+
+    res.json(users);
+  } catch (error) {
+    console.error("Erro na rota GET /api/auth/users:", error);
+    res.status(500).json({ error: "Erro ao listar usuários." });
+  }
+});
+
+app.patch('/api/auth/users/:id', async (req, res) => {
+  try {
+    if (!supabaseAdmin) {
+      return res.status(500).json({ error: "Configuração do Supabase Admin ausente." });
+    }
+
+    const { id } = req.params;
+    const { password, name } = req.body;
+
+    const updatePayload = {};
+    if (password) updatePayload.password = password;
+    if (name !== undefined) updatePayload.user_metadata = { name };
+
+    const { data, error } = await supabaseAdmin.auth.admin.updateUserById(id, updatePayload);
+
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Erro na rota PATCH /api/auth/users/:id:", error);
+    res.status(500).json({ error: error.message || "Erro ao atualizar usuário." });
+  }
+});
+
+// --- Gestão de Permissões ---
+app.get('/api/auth/permissions', async (req, res) => {
+  try {
+    if (!supabaseAdmin) return res.status(500).json({ error: "Supabase Admin ausente." });
+
+    const { data, error } = await supabaseAdmin
+      .from('user_permissions')
+      .select('*');
+
+    if (error) throw error;
+    res.json(data);
+  } catch (error) {
+    console.error("Erro na rota GET /api/auth/permissions:", error);
+    res.status(500).json({ error: "Erro ao buscar permissões." });
+  }
+});
+
+app.get('/api/auth/permissions/:id', async (req, res) => {
+  try {
+    if (!supabaseAdmin) return res.status(500).json({ error: "Supabase Admin ausente." });
+
+    const { data, error } = await supabaseAdmin
+      .from('user_permissions')
+      .select('*')
+      .eq('user_id', req.params.id)
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error; // Ignora erro de não encontrado
+    
+    res.json(data || { role: 'USER', allowed_modules: ['all'] });
+  } catch (error) {
+    console.error("Erro na rota GET /api/auth/permissions/:id:", error);
+    res.status(500).json({ error: "Erro ao buscar permissão do usuário." });
+  }
+});
+
+app.post('/api/auth/permissions', async (req, res) => {
+  try {
+    if (!supabaseAdmin) return res.status(500).json({ error: "Supabase Admin ausente." });
+
+    const { user_id, role, allowed_modules, linked_reps } = req.body;
+
+    const { data, error } = await supabaseAdmin
+      .from('user_permissions')
+      .upsert({ user_id, role, allowed_modules, linked_reps }, { onConflict: 'user_id' });
+
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Erro na rota POST /api/auth/permissions:", error);
+    res.status(500).json({ error: error.message || "Erro ao salvar permissões." });
   }
 });
 
@@ -275,6 +427,200 @@ app.get('/api/crm/followup/all', async (req, res) => {
     res.status(500).json({ error: "Erro ao buscar histórico de follow ups." });
   }
 });
+
+// --- CRM Agenda ---
+app.get('/api/crm/agenda', async (req, res) => {
+  try {
+    const { startDate, endDate, representante, atividade } = req.query;
+    
+    let query = supabase.from('crm_agenda').select('*');
+
+    if (startDate && endDate) {
+      query = query.gte('data_inicio', startDate).lte('data_inicio', endDate);
+    }
+
+    if (representante && representante !== 'ALL') {
+      const repIds = representante.split(',').map(id => parseInt(id.trim(), 10)).filter(id => !isNaN(id));
+      if (repIds.length > 0) {
+        query = query.in('rep_in_codigo', repIds);
+      }
+    }
+
+    if (atividade && atividade !== 'Todas Atividades' && atividade !== 'TODAS') {
+      query = query.eq('atividade', atividade);
+    }
+
+    query = query.order('data_inicio', { ascending: true }).order('hora_inicio', { ascending: true });
+
+    const { data, error } = await query;
+    
+    if (error) throw error;
+    res.json(data || []);
+  } catch (error) {
+    console.error("Erro na rota GET /api/crm/agenda:", error);
+    res.status(500).json({ error: "Erro ao buscar agenda." });
+  }
+});
+
+app.post('/api/crm/agenda', async (req, res) => {
+  try {
+    const { rep_in_codigo, rep_nome, assunto, data_inicio, hora_inicio, hora_termino, atividade, prioridade, cliente_nome, local, descricao, criado_por } = req.body;
+    
+    const { data, error } = await supabase
+      .from('crm_agenda')
+      .insert([{ 
+        rep_in_codigo: parseInt(rep_in_codigo), 
+        rep_nome, 
+        assunto, 
+        data_inicio, 
+        hora_inicio, 
+        hora_termino, 
+        atividade, 
+        prioridade, 
+        cliente_nome, 
+        local, 
+        descricao,
+        criado_por
+      }]);
+
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Erro na rota POST /api/crm/agenda:", error);
+    res.status(500).json({ error: "Erro ao salvar compromisso na agenda." });
+  }
+});
+
+app.put('/api/crm/agenda/:id/status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    
+    const { error } = await supabase
+      .from('crm_agenda')
+      .update({ status })
+      .eq('id', id);
+
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Erro na rota PUT /api/crm/agenda/:id/status:", error);
+    res.status(500).json({ error: "Erro ao atualizar status do compromisso." });
+  }
+});
+
+app.put('/api/crm/agenda/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rep_in_codigo, rep_nome, assunto, data_inicio, hora_inicio, hora_termino, atividade, prioridade, cliente_nome, local, descricao } = req.body;
+
+    const { error } = await supabase
+      .from('crm_agenda')
+      .update({ rep_in_codigo: parseInt(rep_in_codigo), rep_nome, assunto, data_inicio, hora_inicio, hora_termino, atividade, prioridade, cliente_nome, local, descricao })
+      .eq('id', id);
+
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Erro na rota PUT /api/crm/agenda/:id:", error);
+    res.status(500).json({ error: "Erro ao editar compromisso." });
+  }
+});
+
+app.delete('/api/crm/agenda/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { error } = await supabase
+      .from('crm_agenda')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Erro na rota DELETE /api/crm/agenda/:id:", error);
+    res.status(500).json({ error: "Erro ao excluir compromisso." });
+  }
+});
+
+// --- CRM Tarefas ---
+app.get('/api/crm/tarefas', async (req, res) => {
+  try {
+    const { representante, status } = req.query;
+    let query = supabase.from('crm_tarefas').select('*');
+
+    if (representante && representante !== 'ALL') {
+      const reps = representante.split(',').map(r => parseInt(r));
+      query = query.in('rep_codigo', reps);
+    }
+    if (status && status !== 'ALL') {
+      query = query.eq('status', status);
+    }
+
+    query = query.order('vencimento', { ascending: true });
+
+    const { data, error } = await query;
+    if (error) throw error;
+    res.json(data || []);
+  } catch (error) {
+    console.error("Erro na rota GET /api/crm/tarefas:", error);
+    res.status(500).json({ error: "Erro ao buscar tarefas." });
+  }
+});
+
+app.post('/api/crm/tarefas', async (req, res) => {
+  try {
+    const { titulo, descricao, rep_codigo, rep_nome, vencimento, cliente_nome, prioridade, status, criado_por } = req.body;
+    
+    const { error } = await supabase
+      .from('crm_tarefas')
+      .insert([{ 
+        titulo, descricao, rep_codigo: rep_codigo ? parseInt(rep_codigo) : null, rep_nome, vencimento, cliente_nome, prioridade, status, criado_por
+      }]);
+
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Erro na rota POST /api/crm/tarefas:", error);
+    res.status(500).json({ error: "Erro ao salvar tarefa." });
+  }
+});
+
+app.put('/api/crm/tarefas/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { titulo, descricao, rep_codigo, rep_nome, vencimento, cliente_nome, prioridade, status } = req.body;
+
+    const { error } = await supabase
+      .from('crm_tarefas')
+      .update({ titulo, descricao, rep_codigo: rep_codigo ? parseInt(rep_codigo) : null, rep_nome, vencimento, cliente_nome, prioridade, status, updated_at: new Date() })
+      .eq('id', id);
+
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Erro na rota PUT /api/crm/tarefas/:id:", error);
+    res.status(500).json({ error: "Erro ao atualizar tarefa." });
+  }
+});
+
+app.delete('/api/crm/tarefas/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { error } = await supabase
+      .from('crm_tarefas')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Erro na rota DELETE /api/crm/tarefas/:id:", error);
+    res.status(500).json({ error: "Erro ao excluir tarefa." });
+  }
+});
+
 
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
