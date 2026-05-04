@@ -374,13 +374,11 @@ async function getClientes({ representante }) {
       SELECT AGN_IN_CODIGO, 
              AGN_ST_NOME, 
              AGN_ST_CGC, 
-             AGN_ST_MUNICIPIO, 
              UF_ST_SIGLA
         FROM (
           SELECT A.AGN_IN_CODIGO, 
                  CAST(A.AGN_ST_NOME AS VARCHAR2(100)) AS AGN_ST_NOME, 
                  CAST(A.AGN_ST_CGC AS VARCHAR2(20)) AS AGN_ST_CGC, 
-                 CAST(A.AGN_ST_MUNICIPIO AS VARCHAR2(50)) AS AGN_ST_MUNICIPIO, 
                  CAST(A.UF_ST_SIGLA AS VARCHAR2(2)) AS UF_ST_SIGLA,
                  A.AGN_TAB_IN_CODIGO,
                  A.AGN_PAD_IN_CODIGO
@@ -396,10 +394,17 @@ async function getClientes({ representante }) {
 
     const binds = {};
 
-    sql += ` ORDER BY A.AGN_ST_NOME ASC`;
+    sql += ` ORDER BY AGN_ST_NOME ASC`;
 
-    const result = await connection.execute(sql, binds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
-    return result.rows;
+    const result = await connection.execute(sql, binds, { outFormat: oracledb.OUT_FORMAT_ARRAY });
+    
+    // Mapeando manualmente o array para objeto para evitar o erro de metadados das colunas ocultas
+    return result.rows.map(row => ({
+      AGN_IN_CODIGO: row[0],
+      AGN_ST_NOME: row[1],
+      AGN_ST_CGC: row[2],
+      UF_ST_SIGLA: row[3]
+    }));
   } catch (err) {
     console.error("Erro ao buscar clientes:", err.message);
     throw err;
