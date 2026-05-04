@@ -24,6 +24,11 @@ const Sidebar = ({ activeTab, setActiveTab, permissions, session }) => {
         <polyline points="17 6 23 6 23 12"></polyline>
       </svg>
     ) },
+    { id: 'COMISSOES', label: 'Comissões', icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6M2 17h20M2 7h20" />
+      </svg>
+    ) },
   ];
 
   // Filtra os itens baseado na permissão

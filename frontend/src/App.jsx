@@ -464,6 +464,11 @@ function App() {
             <TarefasCRM allowedRepsList={allowedRepsList} permissions={permissions} session={session} />
           ) : activeTab === 'CLIENTES' ? (
             <ClienteCarteira clientes={clientes} />
+          ) : activeTab === 'COMISSOES' ? (
+            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-main)' }}>
+              <h2 style={{ marginBottom: '1rem' }}>Módulo de Comissões</h2>
+              <p style={{ color: 'var(--text-muted)' }}>Configurações e regras de comissionamento em desenvolvimento...</p>
+            </div>
           ) : (
             <>
               {currentMetaValue > 0 && (activeTab === 'PD' || activeTab === 'all') && (
