@@ -11,6 +11,7 @@ import Login from './components/Login';
 import UserManagement from './components/UserManagement';
 import AgendaCRM from './components/AgendaCRM';
 import TarefasCRM from './components/TarefasCRM';
+import ClienteCarteira from './components/ClienteCarteira';
 import { supabase } from './supabaseClient';
 import './App.css';
 
@@ -51,6 +52,7 @@ function App() {
   const [repsList, setRepsList] = useState([]);
   const [metas, setMetas] = useState([]);
   const [faturamentos, setFaturamentos] = useState([]);
+  const [clientes, setClientes] = useState([]);
 
   const fetchMetas = async () => {
     try {
@@ -151,6 +153,7 @@ function App() {
     if (activeTab === 'USERS') return;
     fetchPedidos();
     fetchFaturamentos();
+    if (activeTab === 'CLIENTES') fetchClientes();
   }, [filial, startDate, endDate, status, representante, activeTab]);
 
   const fetchFaturamentos = async () => {
@@ -175,6 +178,32 @@ function App() {
       if (!response.ok) throw new Error('Erro ao buscar faturamentos');
       const data = await response.json();
       setFaturamentos(Array.isArray(data) ? data : []);
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchClientes = async () => {
+    setLoading(true);
+    try {
+      let repQuery = representante;
+      if (!representante || representante === 'ALL') {
+        if (permissions?.role !== 'ADMIN' && permissions?.linked_reps?.length > 0) {
+          repQuery = permissions.linked_reps.join(',');
+        }
+      }
+
+      const query = new URLSearchParams({
+        ...(repQuery && repQuery !== 'ALL' && { representante: repQuery })
+      }).toString();
+      
+      const response = await fetch(`/api/clientes?${query}`);
+      if (!response.ok) throw new Error('Erro ao buscar clientes');
+      const data = await response.json();
+      setClientes(Array.isArray(data) ? data : []);
       setError(null);
     } catch (err) {
       setError(err.message);
@@ -283,6 +312,7 @@ function App() {
                   {activeTab === 'CRM_AGENDA' && 'CRM: Agenda'}
                   {activeTab === 'CRM_TAREFAS' && 'CRM: Tarefas'}
                   {activeTab === 'DV' && 'Desenvolvimentos'}
+                  {activeTab === 'CLIENTES' && 'Carteira de Clientes'}
                   {activeTab === 'METAS' && 'Gestão de Metas'}
                   {activeTab === 'RANKING' && 'Ranking: Meta x Realizado'}
                   {activeTab === 'FAT' && 'Relatório de Faturamento'}
@@ -432,6 +462,8 @@ function App() {
             <AgendaCRM allowedRepsList={allowedRepsList} permissions={permissions} session={session} />
           ) : activeTab === 'CRM_TAREFAS' ? (
             <TarefasCRM allowedRepsList={allowedRepsList} permissions={permissions} session={session} />
+          ) : activeTab === 'CLIENTES' ? (
+            <ClienteCarteira clientes={clientes} />
           ) : (
             <>
               {currentMetaValue > 0 && (activeTab === 'PD' || activeTab === 'all') && (
@@ -607,6 +639,8 @@ function App() {
                     
                     {activeTab === 'FAT' ? (
                       <FaturamentoTable faturamentos={faturamentos} />
+                    ) : activeTab === 'CLIENTES' ? (
+                      <ClienteCarteira clientes={clientes} />
                     ) : (
                       <OrdersTable pedidos={filteredData} />
                     )}

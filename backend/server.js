@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { getPedidos, getRepresentantes, getItensPedido, getFaturamentos, getItensFaturamento } = require('./db');
+const { getPedidos, getRepresentantes, getItensPedido, getFaturamentos, getItensFaturamento, getClientes } = require('./db');
 const { supabase, supabaseAdmin } = require('./supabase');
 
 const app = express();
@@ -27,6 +27,17 @@ app.get('/api/representantes', async (req, res) => {
     res.json(representantes);
   } catch (error) {
     console.error("Erro na rota /api/representantes:", error);
+  }
+});
+
+app.get('/api/clientes', async (req, res) => {
+  try {
+    const { representante } = req.query;
+    const clientes = await getClientes({ representante });
+    res.json(clientes);
+  } catch (error) {
+    console.error("Erro na rota /api/clientes:", error);
+    res.status(500).json({ error: `Erro no banco de dados: ${error.message}` });
   }
 });
 
