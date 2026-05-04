@@ -114,7 +114,14 @@ function App() {
       }).toString();
       
       const response = await fetch(`/api/pedidos?${query}`);
-      if (!response.ok) throw new Error('Erro ao buscar dados do servidor');
+      if (!response.ok) {
+        let errMsg = 'Erro ao buscar dados do servidor';
+        try {
+          const errData = await response.json();
+          if (errData.error) errMsg = errData.error;
+        } catch(e) {}
+        throw new Error(errMsg);
+      }
       const data = await response.json();
       setPedidos(Array.isArray(data) ? data : []);
       setError(null);
