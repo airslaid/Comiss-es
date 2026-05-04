@@ -155,7 +155,7 @@ const OrdersTable = ({ pedidos }) => {
     setLoadingItens(true);
     setItens([]);
     try {
-      const response = await fetch(`http://localhost:3001/api/pedidos/${pedido.ORG_IN_CODIGO}/${pedido.SER_ST_CODIGO}/${pedido.PED_IN_CODIGO}/itens`);
+      const response = await fetch(`/api/pedidos/${pedido.ORG_IN_CODIGO}/${pedido.SER_ST_CODIGO}/${pedido.PED_IN_CODIGO}/itens`);
       if (response.ok) {
         const data = await response.json();
         setItens(data);

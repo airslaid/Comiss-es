@@ -41,9 +41,9 @@ const UserManagement = () => {
     setFetchLoading(true);
     try {
       const [usersRes, permsRes, repsRes] = await Promise.all([
-        fetch('http://localhost:3001/api/auth/users'),
-        fetch('http://localhost:3001/api/auth/permissions'),
-        fetch('http://localhost:3001/api/representantes')
+        fetch('/api/auth/users'),
+        fetch('/api/auth/permissions'),
+        fetch('/api/representantes')
       ]);
 
       if (usersRes.ok && permsRes.ok && repsRes.ok) {
@@ -72,7 +72,7 @@ const UserManagement = () => {
     setError(null);
 
     try {
-      const response = await fetch('http://localhost:3001/api/auth/create-user', {
+      const response = await fetch('/api/auth/create-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, name }),
@@ -97,7 +97,7 @@ const UserManagement = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:3001/api/auth/permissions', {
+      const response = await fetch('/api/auth/permissions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -128,7 +128,7 @@ const UserManagement = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:3001/api/auth/users/${editingName.id}`, {
+      const res = await fetch(`/api/auth/users/${editingName.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: tempName }),

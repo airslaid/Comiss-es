@@ -50,8 +50,8 @@ const TarefaModal = ({ onClose, onSave, repsList, currentUser, editingTask }) =>
 
     try {
       const url = isEdit
-        ? `http://localhost:3001/api/crm/tarefas/${editingTask.id}`
-        : 'http://localhost:3001/api/crm/tarefas';
+        ? `/api/crm/tarefas/${editingTask.id}`
+        : '/api/crm/tarefas';
       const method = isEdit ? 'PUT' : 'POST';
 
       const res = await fetch(url, {

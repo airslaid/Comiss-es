@@ -7,9 +7,8 @@ try {
   oracledb.initOracleClient({ libDir: instantClientPath });
   console.log("Oracle Instant Client inicializado (Thick Mode).");
 } catch (err) {
-  console.error("Erro ao inicializar o Oracle Instant Client:");
-  console.error(err.message);
-  process.exit(1);
+  console.warn("Oracle Instant Client não pôde ser inicializado. Usando Thin Mode nativo.");
+  console.warn(err.message);
 }
 
 // Configuração para evitar erro de truncamento de fetch em dados maiores (DPI-1037/ORA-01406)

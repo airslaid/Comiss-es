@@ -11,7 +11,7 @@ const FollowUpList = () => {
 
   const fetchAllFollowUps = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/crm/followup/all');
+      const response = await fetch('/api/crm/followup/all');
       if (response.ok) {
         const data = await response.json();
         setFollowUps(data);
@@ -30,7 +30,7 @@ const FollowUpList = () => {
   const handleDelete = async () => {
     if (!deleteConfirmation) return;
     try {
-      const response = await fetch(`http://localhost:3001/api/crm/followup/${deleteConfirmation}`, {
+      const response = await fetch(`/api/crm/followup/${deleteConfirmation}`, {
         method: 'DELETE'
       });
       if (response.ok) {
@@ -46,7 +46,7 @@ const FollowUpList = () => {
     if (!editingFollowUp || !editForm.descricao.trim()) return;
     setSaving(true);
     try {
-      const response = await fetch(`http://localhost:3001/api/crm/followup/${editingFollowUp.id}`, {
+      const response = await fetch(`/api/crm/followup/${editingFollowUp.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editForm)

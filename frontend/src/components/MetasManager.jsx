@@ -14,7 +14,7 @@ const MetasManager = ({ repsList, metas, fetchMetas }) => {
     const rep = repsList.find(r => r.CODIGO.toString() === formData.rep_in_codigo.toString());
     
     try {
-      await fetch('http://localhost:3001/api/metas', {
+      await fetch('/api/metas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -34,7 +34,7 @@ const MetasManager = ({ repsList, metas, fetchMetas }) => {
   const handleDelete = async (id) => {
     if (!window.confirm('Excluir esta meta?')) return;
     try {
-      await fetch(`http://localhost:3001/api/metas/${id}`, { method: 'DELETE' });
+      await fetch(`/api/metas/${id}`, { method: 'DELETE' });
       fetchMetas();
     } catch (err) {
       console.error(err);

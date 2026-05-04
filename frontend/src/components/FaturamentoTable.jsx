@@ -114,7 +114,7 @@ const FaturamentoTable = ({ faturamentos }) => {
     setLoadingItens(true);
     setItens([]);
     try {
-      const response = await fetch(`http://localhost:3001/api/faturamentos/${fat.ORG_IN_CODIGO}/${fat.NOT_IN_CODIGO}/itens`);
+      const response = await fetch(`/api/faturamentos/${fat.ORG_IN_CODIGO}/${fat.NOT_IN_CODIGO}/itens`);
       if (response.ok) {
         const data = await response.json();
         setItens(data);

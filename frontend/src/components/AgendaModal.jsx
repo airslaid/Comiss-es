@@ -69,8 +69,8 @@ const AgendaModal = ({ isOpen, onClose, onSave, repsList, currentUser, editingEv
 
     try {
       const url = isEdit
-        ? `http://localhost:3001/api/crm/agenda/${editingEvent.id}`
-        : 'http://localhost:3001/api/crm/agenda';
+        ? `/api/crm/agenda/${editingEvent.id}`
+        : '/api/crm/agenda';
       const method = isEdit ? 'PUT' : 'POST';
 
       const res = await fetch(url, {

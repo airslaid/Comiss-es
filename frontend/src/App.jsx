@@ -40,7 +40,7 @@ function App() {
 
   const fetchMetas = async () => {
     try {
-      const res = await fetch('http://localhost:3001/api/metas');
+      const res = await fetch('/api/metas');
       const data = await res.json();
       setMetas(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -61,7 +61,7 @@ function App() {
     });
 
     fetchMetas();
-    fetch('http://localhost:3001/api/representantes')
+    fetch('/api/representantes')
       .then(res => res.json())
       .then(data => setRepsList(Array.isArray(data) ? data : []))
       .catch(err => console.error("Erro ao buscar representantes:", err));
@@ -78,7 +78,7 @@ function App() {
       }
 
       try {
-        const response = await fetch(`http://localhost:3001/api/auth/permissions/${session.user.id}`);
+        const response = await fetch(`/api/auth/permissions/${session.user.id}`);
         if (response.ok) {
           const data = await response.json();
           setPermissions(data);
@@ -113,7 +113,7 @@ function App() {
         ...(repQuery && repQuery !== 'ALL' && { representante: repQuery })
       }).toString();
       
-      const response = await fetch(`http://localhost:3001/api/pedidos?${query}`);
+      const response = await fetch(`/api/pedidos?${query}`);
       if (!response.ok) throw new Error('Erro ao buscar dados do servidor');
       const data = await response.json();
       setPedidos(Array.isArray(data) ? data : []);
@@ -150,7 +150,7 @@ function App() {
         ...(repQuery && repQuery !== 'ALL' && { representante: repQuery })
       }).toString();
       
-      const response = await fetch(`http://localhost:3001/api/faturamentos?${query}`);
+      const response = await fetch(`/api/faturamentos?${query}`);
       if (!response.ok) throw new Error('Erro ao buscar faturamentos');
       const data = await response.json();
       setFaturamentos(Array.isArray(data) ? data : []);

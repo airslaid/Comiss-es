@@ -28,7 +28,7 @@ const TarefasCRM = ({ allowedRepsList, permissions, session }) => {
         ...(status !== 'ALL' && { status })
       }).toString();
 
-      const res = await fetch(`http://localhost:3001/api/crm/tarefas?${query}`);
+      const res = await fetch(`/api/crm/tarefas?${query}`);
       const data = await res.json();
       setTarefas(data || []);
     } catch (err) {
@@ -45,7 +45,7 @@ const TarefasCRM = ({ allowedRepsList, permissions, session }) => {
   const handleDelete = async (id) => {
     if (!window.confirm("Deseja realmente excluir esta tarefa?")) return;
     try {
-      await fetch(`http://localhost:3001/api/crm/tarefas/${id}`, { method: 'DELETE' });
+      await fetch(`/api/crm/tarefas/${id}`, { method: 'DELETE' });
       fetchTarefas();
     } catch (err) {
       console.error(err);
@@ -55,7 +55,7 @@ const TarefasCRM = ({ allowedRepsList, permissions, session }) => {
   const toggleStatus = async (task) => {
     const newStatus = task.status === 'Pendente' ? 'Concluida' : 'Pendente';
     try {
-      await fetch(`http://localhost:3001/api/crm/tarefas/${task.id}`, {
+      await fetch(`/api/crm/tarefas/${task.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...task, status: newStatus })

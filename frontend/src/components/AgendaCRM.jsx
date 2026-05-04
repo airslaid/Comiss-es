@@ -44,7 +44,7 @@ const AgendaCRM = ({ allowedRepsList, session }) => {
         ...(atividade !== 'Todas Atividades' && { atividade })
       });
 
-      const res = await fetch(`http://localhost:3001/api/crm/agenda?${params}`);
+      const res = await fetch(`/api/crm/agenda?${params}`);
       if (!res.ok) throw new Error("Erro ao buscar agenda");
       const data = await res.json();
       setEvents(data);
@@ -61,7 +61,7 @@ const AgendaCRM = ({ allowedRepsList, session }) => {
 
   const handleDelete = async (id) => {
     try {
-      const res = await fetch(`http://localhost:3001/api/crm/agenda/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/crm/agenda/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Erro ao excluir');
       setDeletingEvent(null);
       fetchEvents();

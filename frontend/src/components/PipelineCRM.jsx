@@ -30,7 +30,7 @@ const PipelineCRM = ({ pedidos }) => {
 
   const fetchPipeline = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/crm/pipeline');
+      const response = await fetch('/api/crm/pipeline');
       if (response.ok) {
         const data = await response.json();
         setPipelineData(data);
@@ -49,7 +49,7 @@ const PipelineCRM = ({ pedidos }) => {
     setEditingFollowUp(null);
     setNewFollowUp({ tipo: 'E-MAIL', descricao: '' });
     try {
-      const response = await fetch(`http://localhost:3001/api/pedidos/${p.ORG_IN_CODIGO}/${p.SER_ST_CODIGO}/${p.PED_IN_CODIGO}/itens`);
+      const response = await fetch(`/api/pedidos/${p.ORG_IN_CODIGO}/${p.SER_ST_CODIGO}/${p.PED_IN_CODIGO}/itens`);
       if (response.ok) {
         const data = await response.json();
         setItems(data);
@@ -64,7 +64,7 @@ const PipelineCRM = ({ pedidos }) => {
 
   const fetchFollowUps = async (p) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/crm/followup/${p.ORG_IN_CODIGO}/${p.SER_ST_CODIGO}/${p.PED_IN_CODIGO}`);
+      const response = await fetch(`/api/crm/followup/${p.ORG_IN_CODIGO}/${p.SER_ST_CODIGO}/${p.PED_IN_CODIGO}`);
       if (response.ok) {
         const data = await response.json();
         setFollowUps(data);
@@ -79,8 +79,8 @@ const PipelineCRM = ({ pedidos }) => {
     setSavingFollowUp(true);
     try {
       const url = editingFollowUp 
-        ? `http://localhost:3001/api/crm/followup/${editingFollowUp.id}`
-        : 'http://localhost:3001/api/crm/followup';
+        ? `/api/crm/followup/${editingFollowUp.id}`
+        : '/api/crm/followup';
       
       const method = editingFollowUp ? 'PUT' : 'POST';
       
@@ -117,7 +117,7 @@ const PipelineCRM = ({ pedidos }) => {
   const deleteFollowUp = async () => {
     if (!deleteConfirmation) return;
     try {
-      const response = await fetch(`http://localhost:3001/api/crm/followup/${deleteConfirmation}`, {
+      const response = await fetch(`/api/crm/followup/${deleteConfirmation}`, {
         method: 'DELETE'
       });
       if (response.ok) {
@@ -147,7 +147,7 @@ const PipelineCRM = ({ pedidos }) => {
 
   const updateStage = async (pedido, newStage) => {
     try {
-      await fetch('http://localhost:3001/api/crm/pipeline', {
+      await fetch('/api/crm/pipeline', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -176,7 +176,7 @@ const PipelineCRM = ({ pedidos }) => {
     e.stopPropagation();
     const current = isHotLead(p);
     try {
-      await fetch('http://localhost:3001/api/crm/pipeline/hot-lead', {
+      await fetch('/api/crm/pipeline/hot-lead', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -340,7 +340,8 @@ const PipelineCRM = ({ pedidos }) => {
                   boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
                   cursor: (stage !== 'FECHADO (GANHO)' && stage !== 'CANCELADO') ? 'grab' : 'pointer',
                   opacity: (stage === 'FECHADO (GANHO)' || stage === 'CANCELADO') ? 0.8 : 1,
-                  minHeight: '110px',
+                  minHeight: '125px',
+                  flexShrink: 0,
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'space-between',
