@@ -410,6 +410,45 @@ async function getClientes({ representante }) {
   }
 }
 
-module.exports = { getPedidos, getRepresentantes, getItensPedido, getFaturamentos, getItensFaturamento, getClientes };
+async function getAtingimentoMensal() {
+  let connection;
+  try {
+    connection = await oracledb.getConnection({
+      user          : "AIR",
+      password      : "AsrFTT8SjK",
+      connectString : "dbconnect.megaerp.online:4221/xepdb1"
+    });
 
+    const sql = `
+      SELECT REP_IN_CODIGO, 
+             TO_CHAR(PED_DT_EMISSAO, 'YYYY-MM') AS MES_ANO, 
+             SUM(PED_RE_VALORTOTAL) AS TOTAL_REALIZADO
+        FROM MEGA.VEN_PEDIDOVENDA@AIR
+       WHERE PED_CH_STATUS <> 'C'
+         AND SER_ST_CODIGO = 'PD'
+       GROUP BY REP_IN_CODIGO, TO_CHAR(PED_DT_EMISSAO, 'YYYY-MM')
+    `;
 
+    const result = await connection.execute(sql, {}, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+    return result.rows;
+
+  } catch (err) {
+    console.error("Erro ao buscar atingimento mensal:", err.message);
+    throw err;
+  } finally {
+    if (connection) {
+      try { await connection.close(); } catch (err) { console.error(err); }
+    }
+  }
+}
+
+module.exports = {
+  getPedidos,
+  getRepresentantes,
+  getMetas,
+  upsertMeta,
+  getFaturamentos,
+  getItensFaturamento,
+  getClientes,
+  getAtingimentoMensal
+};

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 
-const ComissoesTable = ({ faturamentos }) => {
+const ComissoesTable = ({ faturamentos, metas, atingimentoMensal }) => {
   const [selectedFat, setSelectedFat] = useState(null);
   const [itens, setItens] = useState([]);
   const [loadingItens, setLoadingItens] = useState(false);
@@ -14,9 +14,9 @@ const ComissoesTable = ({ faturamentos }) => {
     cod: 80,
     cliente: 300,
     rep: 150,
-    vlrMerc: 110,
     vlrTotal: 110,
-    comissao: 110
+    pctComiss: 80,
+    vlrComiss: 110
   });
 
   const resizing = useRef(null);
@@ -73,8 +73,48 @@ const ComissoesTable = ({ faturamentos }) => {
     setSortConfig({ key, direction });
   };
 
+  const getCommissionData = (fat) => {
+    // 1. Obter mês/ano do pedido (formato DD/MM/YYYY na string)
+    if (!fat.PEDIDOS_DATAS) return { pct: 0, valor: 0, atingimento: 0 };
+    
+    const firstDate = fat.PEDIDOS_DATAS.split(',')[0].trim();
+    const dateParts = firstDate.split('/');
+    if (dateParts.length !== 3) return { pct: 0, valor: 0, atingimento: 0 };
+    
+    const [day, month, year] = dateParts;
+    const mesAno = `${year}-${month}`;
+    
+    const repId = fat.REP_IN_CODIGO;
+
+    // 2. Buscar meta
+    const metaObj = metas.find(m => m.rep_in_codigo === repId && m.mes_ano === mesAno);
+    const valorMeta = metaObj ? metaObj.valor_meta : 0;
+
+    // 3. Buscar realizado
+    const realObj = atingimentoMensal.find(a => a.REP_IN_CODIGO === repId && a.MES_ANO === mesAno);
+    const valorRealizado = realObj ? realObj.TOTAL_REALIZADO : 0;
+
+    // 4. Calcular atingimento
+    const atingimento = valorMeta > 0 ? (valorRealizado / valorMeta) * 100 : 0;
+
+    // 5. Aplicar regra
+    let pct = 0;
+    if (atingimento === 0) pct = 0;
+    else if (atingimento <= 65) pct = 1;
+    else if (atingimento <= 85) pct = 1.5;
+    else pct = 2;
+
+    const valorComissao = (fat.NOT_RE_VALORTOTAL || 0) * (pct / 100);
+
+    return { pct, valor: valorComissao, atingimento };
+  };
+
   const sortedData = useMemo(() => {
-    let sortableItems = [...faturamentos];
+    let sortableItems = faturamentos.map(fat => ({
+      ...fat,
+      ...getCommissionData(fat)
+    }));
+    
     if (sortConfig.key !== null) {
       sortableItems.sort((a, b) => {
         let aValue = a[sortConfig.key];
@@ -93,7 +133,7 @@ const ComissoesTable = ({ faturamentos }) => {
       });
     }
     return sortableItems;
-  }, [faturamentos, sortConfig]);
+  }, [faturamentos, metas, atingimentoMensal, sortConfig]);
 
   const formatCurrency = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
   const formatDate = (dateString) => new Date(dateString).toLocaleDateString('pt-BR');
@@ -206,9 +246,13 @@ const ComissoesTable = ({ faturamentos }) => {
                 Vlr Total{getSortIcon('NOT_RE_VALORTOTAL')}
                 <div onMouseDown={(e) => onMouseDown(e, 'vlrTotal')} style={resizerStyle} />
               </th>
-              <th style={thStyle(widths.comissao)}>
-                % Comiss.{getSortIcon('comissao')}
-                <div onMouseDown={(e) => onMouseDown(e, 'comissao')} style={resizerStyle} />
+              <th style={thStyle(widths.pctComiss)} onClick={() => requestSort('pct')}>
+                % Comiss.{getSortIcon('pct')}
+                <div onMouseDown={(e) => onMouseDown(e, 'pctComiss')} style={resizerStyle} />
+              </th>
+              <th style={thStyle(widths.vlrComiss)} onClick={() => requestSort('valor')}>
+                Vlr Comissão{getSortIcon('valor')}
+                <div onMouseDown={(e) => onMouseDown(e, 'vlrComiss')} style={resizerStyle} />
               </th>
             </tr>
           </thead>
@@ -241,7 +285,13 @@ const ComissoesTable = ({ faturamentos }) => {
                 <td style={{ ...tdStyle(widths.cliente), fontWeight: '600', textAlign: 'left' }}>{fat.CLIENTE_NOME}</td>
                 <td style={tdStyle(widths.rep)}>{fat.REP_NOME}</td>
                 <td style={{ ...tdStyle(widths.vlrTotal), fontWeight: '600' }}>{formatCurrency(fat.NOT_RE_VALORTOTAL)}</td>
-                <td style={{ ...tdStyle(widths.comissao), fontWeight: '700', color: '#10b981' }}>-</td>
+                <td style={{ ...tdStyle(widths.pctComiss), fontWeight: '700', color: '#10b981' }}>
+                  {fat.pct}%
+                  <div style={{ fontSize: '0.5rem', color: 'var(--text-muted)', fontWeight: '400' }}>
+                    ({fat.atingimento.toFixed(1)}% meta)
+                  </div>
+                </td>
+                <td style={{ ...tdStyle(widths.vlrComiss), fontWeight: '700', color: 'var(--accent-color)' }}>{formatCurrency(fat.valor)}</td>
               </tr>
             ))}
           </tbody>

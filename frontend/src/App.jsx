@@ -53,6 +53,7 @@ function App() {
   const [repsList, setRepsList] = useState([]);
   const [metas, setMetas] = useState([]);
   const [faturamentos, setFaturamentos] = useState([]);
+  const [atingimentoMensal, setAtingimentoMensal] = useState([]);
   const [clientes, setClientes] = useState([]);
 
   const fetchMetas = async () => {
@@ -155,7 +156,22 @@ function App() {
     fetchPedidos();
     fetchFaturamentos();
     if (activeTab === 'CLIENTES') fetchClientes();
+    if (activeTab === 'COMISSOES' || activeTab === 'RANKING') {
+      fetchMetas();
+      fetchAtingimento();
+    }
   }, [filial, startDate, endDate, status, representante, activeTab]);
+
+  const fetchAtingimento = async () => {
+    try {
+      const response = await fetch('/api/comissoes/atingimento');
+      if (!response.ok) throw new Error('Erro ao buscar atingimento');
+      const data = await response.json();
+      setAtingimentoMensal(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const fetchFaturamentos = async () => {
     setLoading(true);
@@ -466,7 +482,7 @@ function App() {
           ) : activeTab === 'CLIENTES' ? (
             <ClienteCarteira clientes={clientes} />
           ) : activeTab === 'COMISSOES' ? (
-            <ComissoesTable faturamentos={faturamentos} />
+            <ComissoesTable faturamentos={faturamentos} metas={metas} atingimentoMensal={atingimentoMensal} />
           ) : (
             <>
               {currentMetaValue > 0 && (activeTab === 'PD' || activeTab === 'all') && (
