@@ -28,6 +28,7 @@ const UserManagement = () => {
     { id: 'CRM_PIPELINE', label: 'CRM - Pipeline' },
     { id: 'CRM_FOLLOWUP', label: 'CRM - Follow Up' },
     { id: 'CRM_AGENDA', label: 'CRM - Agenda' },
+    { id: 'CRM_TAREFAS', label: 'CRM - Tarefas' },
     { id: 'OV', label: 'Orçamentos' },
     { id: 'PD', label: 'Pedidos' },
     { id: 'DV', label: 'Desenvolvimentos' },
@@ -35,6 +36,13 @@ const UserManagement = () => {
     { id: 'RANKING', label: 'Meta x Realizado' },
     { id: 'METAS', label: 'Gestão de Metas' },
     { id: 'USERS', label: 'Gestão de Usuários' },
+    { id: 'COMISSOES_GERAL', label: 'Comissões - Visão Geral' },
+    { id: 'COMISSOES_REPS', label: 'Comissões - Representantes' },
+    { id: 'COMISSOES_GERENTE', label: 'Comissões - Gerente' },
+    { id: 'COMISSOES_SUPERVISOR', label: 'Comissões - Supervisor' },
+    { id: 'COMISSOES_EXECUTIVO', label: 'Comissões - Executivo' },
+    { id: 'COMISSOES_ASSISTENTE', label: 'Comissões - Assistente' },
+    { id: 'PAGAMENTOS', label: 'Controle de Pagamentos' },
   ];
 
   const fetchData = async () => {

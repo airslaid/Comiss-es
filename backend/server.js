@@ -34,6 +34,7 @@ app.get('/api/clientes', async (req, res) => {
   try {
     const { representante } = req.query;
     let clientes = await getClientes({ representante });
+    console.log(`[/api/clientes] Encontrados ${clientes ? clientes.length : 0} clientes`);
     
     // DEBUG: Se não trouxer nada, envia um registro fake para sabermos se a API respondeu
     if (!clientes || clientes.length === 0) {

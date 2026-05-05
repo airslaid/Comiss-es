@@ -339,29 +339,43 @@ async function getClientes({ representante }) {
       password      : "AsrFTT8SjK",
       connectString : "dbconnect.megaerp.online:4221/xepdb1"
     });
+
     let sql = `
-      SELECT C.AGN_IN_CODIGO, 
-             (SELECT TO_CHAR(SUBSTR(A.AGN_ST_NOME, 1, 80)) FROM MEGA.GLO_AGENTES@AIR A 
-               WHERE A.AGN_TAB_IN_CODIGO = C.AGN_TAB_IN_CODIGO 
-                 AND A.AGN_PAD_IN_CODIGO = C.AGN_PAD_IN_CODIGO 
-                 AND A.AGN_IN_CODIGO = C.AGN_IN_CODIGO 
-                 AND ROWNUM = 1) AS AGN_ST_NOME,
-             (SELECT TO_CHAR(SUBSTR(A.AGN_ST_CGC, 1, 20)) FROM MEGA.GLO_AGENTES@AIR A 
-               WHERE A.AGN_TAB_IN_CODIGO = C.AGN_TAB_IN_CODIGO 
-                 AND A.AGN_PAD_IN_CODIGO = C.AGN_PAD_IN_CODIGO 
-                 AND A.AGN_IN_CODIGO = C.AGN_IN_CODIGO 
-                 AND ROWNUM = 1) AS AGN_ST_CGC,
-             'UF' AS UF_ST_SIGLA
-        FROM MEGA.GLO_CLIENTE@AIR C
-       WHERE ROWNUM <= 100
+      SELECT DISTINCT 
+             A.AGN_IN_CODIGO, 
+             A.AGN_ST_NOME, 
+             A.AGN_ST_CGC, 
+             A.AGN_ST_MUNICIPIO, 
+             A.UF_ST_SIGLA,
+             A.AGN_ST_EMAIL
+        FROM MEGA.GLO_AGENTES@AIR A
+        JOIN MEGA.VEN_PEDIDOVENDA@AIR P ON P.CLI_IN_CODIGO = A.AGN_IN_CODIGO 
+                                       AND P.CLI_TAB_IN_CODIGO = A.AGN_TAB_IN_CODIGO
+                                       AND P.CLI_PAD_IN_CODIGO = A.AGN_PAD_IN_CODIGO
+        WHERE 1=1
     `;
-    const result = await connection.execute(sql, {}, { outFormat: oracledb.OUT_FORMAT_ARRAY });
-    return result.rows.map(row => ({
-      AGN_IN_CODIGO: row[0] || 'N/A',
-      AGN_ST_NOME: row[1] || 'NOME NÃO ENCONTRADO',
-      AGN_ST_CGC: row[2] || '000',
-      UF_ST_SIGLA: row[3] || 'UF'
-    }));
+
+    const binds = {};
+    if (representante && representante !== 'ALL') {
+      const repIds = representante.split(',').map(id => parseInt(id.trim(), 10)).filter(id => !isNaN(id));
+      if (repIds.length > 0) {
+        if (repIds.length === 1) {
+          sql += ` AND P.REP_IN_CODIGO = :representante`;
+          binds.representante = repIds[0];
+        } else {
+          const repPlaceholders = repIds.map((id, index) => `:rep${index}`).join(', ');
+          sql += ` AND P.REP_IN_CODIGO IN (${repPlaceholders})`;
+          repIds.forEach((id, index) => {
+            binds[`rep${index}`] = id;
+          });
+        }
+      }
+    }
+
+    sql += ` AND ROWNUM <= 500 ORDER BY A.AGN_ST_NOME`;
+
+    const result = await connection.execute(sql, binds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+    return result.rows;
   } catch (err) {
     console.error("Erro ao buscar clientes:", err.message);
     throw err;
