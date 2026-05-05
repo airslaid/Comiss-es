@@ -170,7 +170,7 @@ function App() {
       fetchMetas();
       fetchAtingimento();
     }
-  }, [filial, startDate, endDate, status, representante, activeTab]);
+  }, [filial, startDate, endDate, status, representante, activeTab, permissions]);
 
   const fetchAtingimento = async () => {
     try {
