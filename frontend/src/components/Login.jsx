@@ -35,7 +35,7 @@ const Login = () => {
               <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
             </svg>
           </div>
-          <h1 style={styles.title}>SalesPay Pro</h1>
+          <h1 style={styles.title}>AIR SALES</h1>
           <p style={styles.subtitle}>Gestão de Vendas Mega ERP</p>
         </div>
 
@@ -84,7 +84,7 @@ const Login = () => {
         </form>
 
         <div style={styles.footer}>
-          <p>© 2026 SalesPay Pro. Todos os direitos reservados.</p>
+          <p>© 2026 AIR SALES. Todos os direitos reservados.</p>
         </div>
       </div>
     </div>
