@@ -45,8 +45,14 @@ function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [permissions, setPermissions] = useState(null);
   
-  // Estados dos Filtros
-  const [activeTab, setActiveTab] = useState('FAT');
+  // Estados dos Filtros — persiste a aba ativa no localStorage
+  const [activeTab, setActiveTabState] = useState(() => {
+    return localStorage.getItem('activeTab') || 'FAT';
+  });
+  const setActiveTab = (tab) => {
+    setActiveTabState(tab);
+    localStorage.setItem('activeTab', tab);
+  };
   const [filial, setFilial] = useState('100'); // Padrão: AIRSL AID (100)
   const [startDate, setStartDate] = useState(defaultStart);
   const [endDate, setEndDate] = useState(defaultEnd);
