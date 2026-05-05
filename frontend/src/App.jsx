@@ -47,7 +47,7 @@ function App() {
   
   // Estados dos Filtros
   const [activeTab, setActiveTab] = useState('FAT');
-  const [filial, setFilial] = useState('ALL');
+  const [filial, setFilial] = useState('100'); // Padrão: AIRSL AID (100)
   const [startDate, setStartDate] = useState(defaultStart);
   const [endDate, setEndDate] = useState(defaultEnd);
   const [status, setStatus] = useState('ALL');
