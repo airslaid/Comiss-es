@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const FollowUpList = () => {
+const FollowUpList = ({ startDate, endDate, representante }) => {
   const [followUps, setFollowUps] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -8,6 +8,8 @@ const FollowUpList = () => {
   const [deleteConfirmation, setDeleteConfirmation] = useState(null);
   const [saving, setSaving] = useState(false);
   const [editForm, setEditForm] = useState({ tipo: '', descricao: '' });
+
+  const [activityFilter, setActivityFilter] = useState(() => localStorage.getItem('crm_activity_filter') || 'TODOS');
 
   const fetchAllFollowUps = async () => {
     try {
@@ -25,6 +27,13 @@ const FollowUpList = () => {
 
   useEffect(() => {
     fetchAllFollowUps();
+
+    const handleFilterChange = () => {
+      setActivityFilter(localStorage.getItem('crm_activity_filter') || 'TODOS');
+    };
+
+    window.addEventListener('crm_filter_change', handleFilterChange);
+    return () => window.removeEventListener('crm_filter_change', handleFilterChange);
   }, []);
 
   const handleDelete = async () => {
@@ -67,51 +76,87 @@ const FollowUpList = () => {
     setEditForm({ tipo: f.tipo, descricao: f.descricao });
   };
 
-  const getFollowUpIcon = (tipo) => {
-    switch(tipo) {
-      case 'E-MAIL': return '📧';
-      case 'VISITA': return '🚗';
-      case 'TELEFONEMA': return '📞';
-      case 'WHATSAPP': return '💬';
-      default: return '📎';
+  const getActivityStyle = (tipo) => {
+    const t = tipo?.toUpperCase();
+    switch(t) {
+      case 'E-MAIL': return { icon: '📧', color: '#3b82f6', bg: '#eff6ff' };
+      case 'VISITA': return { icon: '🚗', color: '#f59e0b', bg: '#fffbeb' };
+      case 'TELEFONEMA': return { icon: '📞', color: '#8b5cf6', bg: '#f5f3ff' };
+      case 'WHATSAPP': return { icon: '💬', color: '#10b981', bg: '#ecfdf5' };
+      case 'AGENDA': return { icon: '📅', color: '#64748b', bg: '#f8fafc' };
+      default: return { icon: '📎', color: '#94a3b8', bg: '#f1f5f9' };
     }
   };
 
-  const filteredFollowUps = followUps.filter(f => 
-    f.CLIENTE_NOME.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    f.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    f.ped_in_codigo.toString().includes(searchTerm) ||
-    f.REP_NOME.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredFollowUps = followUps.filter(f => {
+    // Filtro de Pesquisa
+    const matchesSearch = 
+      f.CLIENTE_NOME.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      f.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      f.ped_in_codigo.toString().includes(searchTerm) ||
+      f.REP_NOME.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // Filtro de Atividade
+    const matchesActivity = activityFilter === 'TODOS' || f.tipo?.toUpperCase() === activityFilter;
+
+    // Filtro de Representante
+    const matchesRep = !representante || f.rep_in_codigo?.toString() === representante.toString();
+
+    // Filtro de Data (Inclusão)
+    let matchesDate = true;
+    if (startDate || endDate) {
+      const contactDate = new Date(f.data_contato);
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0,0,0,0);
+        if (contactDate < start) matchesDate = false;
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23,59,59,999);
+        if (contactDate > end) matchesDate = false;
+      }
+    }
+    
+    return matchesSearch && matchesActivity && matchesRep && matchesDate;
+  });
 
   if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Carregando histórico...</div>;
 
   return (
-    <div style={{ padding: '1rem' }}>
+    <div style={{ padding: '1.5rem', backgroundColor: '#f8fafc', minHeight: '100vh' }}>
       <div style={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center', 
         marginBottom: '1.5rem',
         backgroundColor: '#ffffff',
-        padding: '1rem',
-        borderRadius: '8px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+        padding: '1.25rem',
+        borderRadius: '12px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+        border: '1px solid #e2e8f0'
       }}>
-        <h2 style={{ fontSize: '1.1rem', fontWeight: '800', color: '#1e293b', margin: 0 }}>HISTÓRICO GERAL DE FOLLOW UP</h2>
-        <input 
-          type="text" 
-          placeholder="Pesquisar por cliente, pedido, representante ou descrição..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          style={{ 
-            padding: '0.5rem 1rem', 
-            borderRadius: '6px', 
-            border: '1px solid #e2e8f0', 
-            width: '400px',
-            fontSize: '0.8rem'
-          }}
-        />
+        <div>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: '800', color: '#1e293b', margin: 0 }}>HISTÓRICO GERAL DE FOLLOW UP</h2>
+          <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '0.2rem 0 0 0' }}>{filteredFollowUps.length} registros encontrados</p>
+        </div>
+        
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <input 
+            type="text" 
+            placeholder="Pesquisar por cliente, pedido, representante..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{ 
+              padding: '0.5rem 1rem', 
+              borderRadius: '8px', 
+              border: '1px solid #e2e8f0', 
+              width: '350px',
+              fontSize: '0.8rem',
+              outline: 'none'
+            }}
+          />
+        </div>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -120,62 +165,104 @@ const FollowUpList = () => {
             Nenhum registro encontrado.
           </div>
         ) : (
-          filteredFollowUps.map((f, idx) => (
-            <div key={f.id || idx} style={{ 
-              backgroundColor: '#ffffff', 
-              padding: '1.25rem', 
-              borderRadius: '8px', 
-              border: '1px solid #e2e8f0',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
-              display: 'flex',
-              gap: '1.5rem',
-              position: 'relative'
-            }}>
-              {/* Coluna de Info do Pedido */}
-              <div style={{ flex: '0 0 220px', borderRight: '1px solid #f1f5f9', paddingRight: '1rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: '900', color: 'var(--accent-color)' }}>#{f.ped_in_codigo}</span>
-                  <span style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: '700' }}>{f.ser_st_codigo}</span>
-                </div>
-                <div style={{ fontSize: '0.8rem', fontWeight: '800', color: '#1e293b', marginBottom: '0.2rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {f.CLIENTE_NOME}
-                </div>
-                <div style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: '600' }}>
-                  REP: {f.REP_NOME}
-                </div>
-              </div>
-
-              {/* Coluna do Follow Up */}
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ fontSize: '1.2rem' }}>{getFollowUpIcon(f.tipo)}</span>
-                    <span style={{ fontSize: '0.7rem', fontWeight: '900', textTransform: 'uppercase', color: 'var(--accent-color)', letterSpacing: '0.05em' }}>{f.tipo}</span>
+          filteredFollowUps.map((f, idx) => {
+            const style = getActivityStyle(f.tipo);
+            return (
+              <div key={f.id || idx} style={{ 
+                backgroundColor: '#ffffff', 
+                padding: '1rem 1.25rem', 
+                borderRadius: '10px', 
+                border: '1px solid #e2e8f0',
+                borderLeft: `4px solid ${style.color}`,
+                boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+                display: 'flex',
+                gap: '1.25rem',
+                position: 'relative',
+                transition: 'transform 0.2s, box-shadow 0.2s',
+                cursor: 'default'
+              }}>
+                {/* Coluna de Info do Pedido */}
+                <div style={{ flex: 1, borderRight: '1px solid #f1f5f9', paddingRight: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem', alignItems: 'center' }}>
+                    <span style={{ 
+                      fontSize: '0.75rem', 
+                      fontWeight: '900', 
+                      color: '#475569',
+                      backgroundColor: '#f1f5f9',
+                      padding: '0.15rem 0.5rem',
+                      borderRadius: '4px'
+                    }}>#{f.ped_in_codigo}</span>
+                    <span style={{ fontSize: '0.6rem', color: '#cbd5e1', fontWeight: '800', letterSpacing: '0.05em' }}>{f.ser_st_codigo}</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <span style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: '700' }}>
-                      {new Date(f.data_contato).toLocaleString('pt-BR')}
-                    </span>
-                    <div style={{ display: 'flex', gap: '0.4rem' }}>
-                      <button 
-                        onClick={() => startEdit(f)}
-                        title="Editar"
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem', color: '#3b82f6', padding: '0.2rem' }}
-                      >✏️</button>
-                      <button 
-                        onClick={() => setDeleteConfirmation(f.id)}
-                        title="Excluir"
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem', color: '#ef4444', padding: '0.2rem' }}
-                      >🗑️</button>
+                  <div style={{ fontSize: '0.8rem', fontWeight: '800', color: '#1e293b', marginBottom: '0.25rem' }}>
+                    {f.CLIENTE_NOME}
+                  </div>
+                  <div style={{ 
+                    fontSize: '0.65rem', 
+                    color: '#94a3b8', 
+                    fontWeight: '700',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.3rem'
+                  }}>
+                    <span style={{ color: style.color, fontSize: '0.8rem' }}>👤</span> {f.REP_NOME}
+                  </div>
+                </div>
+
+                {/* Coluna do Follow Up */}
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '0.5rem',
+                      backgroundColor: style.bg,
+                      padding: '0.2rem 0.6rem',
+                      borderRadius: '15px'
+                    }}>
+                      <span style={{ fontSize: '0.8rem' }}>{style.icon}</span>
+                      <span style={{ 
+                        fontSize: '0.6rem', 
+                        fontWeight: '900', 
+                        textTransform: 'uppercase', 
+                        color: style.color, 
+                        letterSpacing: '0.05em' 
+                      }}>{f.tipo}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <span style={{ fontSize: '0.65rem', color: '#cbd5e1', fontWeight: '700' }}>
+                        {new Date(f.data_contato).toLocaleString('pt-BR')}
+                      </span>
+                      <div style={{ display: 'flex', gap: '0.1rem' }}>
+                        <button 
+                          onClick={() => startEdit(f)}
+                          title="Editar"
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', color: '#94a3b8', padding: '0.3rem', borderRadius: '4px' }}
+                        >✏️</button>
+                        <button 
+                          onClick={() => setDeleteConfirmation(f.id)}
+                          title="Excluir"
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', color: '#94a3b8', padding: '0.3rem', borderRadius: '4px' }}
+                        >🗑️</button>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div style={{ fontSize: '0.85rem', color: '#334155', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
-                  {f.descricao}
+                  <div style={{ 
+                    fontSize: '0.75rem', 
+                    color: '#475569', 
+                    lineHeight: '1.5', 
+                    whiteSpace: 'pre-wrap',
+                    padding: '0.6rem 0.75rem',
+                    backgroundColor: '#f8fafc',
+                    borderRadius: '6px',
+                    border: '1px solid #f1f5f9'
+                  }}>
+                    {f.descricao}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 

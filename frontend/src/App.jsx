@@ -476,54 +476,107 @@ function App() {
               alignItems: 'flex-end',
               animation: 'slideDown 0.3s ease-out'
             }}>
-              <div className="filter-group">
-                <label>Filial</label>
-                <select value={filial} onChange={(e) => setFilial(e.target.value)}>
-                  <option value="ALL">Todas</option>
-                  <option value="100">AIRSLAID (100)</option>
-                  <option value="200">BIG TELAS (200)</option>
-                </select>
-              </div>
-              {activeTab !== 'PAGAMENTOS' && activeTab !== 'COMISSOES_GERAL' && (
-                <div className="filter-group">
-                  <label>Status</label>
-                  <select value={status} onChange={(e) => setStatus(e.target.value)}>
-                    <option value="ALL">Todos</option>
-                    <option value="AP">Em Aberto</option>
-                    {activeTab !== 'PD' && <option value="B">Em Aprovação</option>}
-                    {activeTab !== 'OV' && <option value="F">Faturado</option>}
-                    <option value="C">Cancelado</option>
-                    {activeTab !== 'PD' && <option value="E">Encerrado</option>}
-                  </select>
-                </div>
+              {/* Filtros específicos para CRM */}
+              {activeTab.startsWith('CRM_') ? (
+                <>
+                  <div className="filter-group">
+                    <label>Representante</label>
+                    <select 
+                      value={representante} 
+                      onChange={(e) => setRepresentante(e.target.value)}
+                      style={{ width: '220px' }}
+                    >
+                      <option value="">Todos os Seus Representantes</option>
+                      {allowedRepsList.map(rep => (
+                        <option key={rep.CODIGO} value={rep.CODIGO}>{rep.NOME}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="filter-group">
+                    <label>Atividade</label>
+                    <select 
+                      value={localStorage.getItem('crm_activity_filter') || 'TODOS'} 
+                      onChange={(e) => {
+                        localStorage.setItem('crm_activity_filter', e.target.value);
+                        // Disparar um evento customizado para que os componentes filhos saibam que mudou
+                        window.dispatchEvent(new Event('crm_filter_change'));
+                      }}
+                    >
+                      <option value="TODOS">Todas Atividades</option>
+                      <option value="E-MAIL">E-mail</option>
+                      <option value="VISITA">Visita</option>
+                      <option value="TELEFONEMA">Telefonema</option>
+                      <option value="WHATSAPP">WhatsApp</option>
+                      <option value="AGENDA">Agenda</option>
+                    </select>
+                  </div>
+
+                  <div className="filter-group">
+                    <label>Data Inicial (Inclusão)</label>
+                    <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                  </div>
+                  <div className="filter-group">
+                    <label>Data Final (Inclusão)</label>
+                    <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                  </div>
+                </>
+              ) : (
+                /* Filtros Originais (Vendas/Faturamento) */
+                <>
+                  <div className="filter-group">
+                    <label>Filial</label>
+                    <select value={filial} onChange={(e) => setFilial(e.target.value)}>
+                      <option value="ALL">Todas</option>
+                      <option value="100">AIRSLAID (100)</option>
+                      <option value="200">BIG TELAS (200)</option>
+                    </select>
+                  </div>
+                  {activeTab !== 'PAGAMENTOS' && activeTab !== 'COMISSOES_GERAL' && (
+                    <div className="filter-group">
+                      <label>Status</label>
+                      <select value={status} onChange={(e) => setStatus(e.target.value)}>
+                        <option value="ALL">Todos</option>
+                        <option value="AP">Em Aberto</option>
+                        {activeTab !== 'PD' && <option value="B">Em Aprovação</option>}
+                        {activeTab !== 'OV' && <option value="F">Faturado</option>}
+                        <option value="C">Cancelado</option>
+                        {activeTab !== 'PD' && <option value="E">Encerrado</option>}
+                      </select>
+                    </div>
+                  )}
+                  <div className="filter-group">
+                    <label>Representante</label>
+                    <select 
+                      value={representante} 
+                      onChange={(e) => setRepresentante(e.target.value)}
+                      style={{ width: '220px' }}
+                    >
+                      <option value="">Todos os Seus Representantes</option>
+                      {allowedRepsList.map(rep => (
+                        <option key={rep.CODIGO} value={rep.CODIGO}>{rep.NOME}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="filter-group">
+                    <label>Início</label>
+                    <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                  </div>
+                  <div className="filter-group">
+                    <label>Fim</label>
+                    <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                  </div>
+                </>
               )}
-              <div className="filter-group">
-                <label>Representante</label>
-                <select 
-                  value={representante} 
-                  onChange={(e) => setRepresentante(e.target.value)}
-                  style={{ width: '220px' }}
-                >
-                  <option value="">Todos os Seus Representantes</option>
-                  {allowedRepsList.map(rep => (
-                      <option key={rep.CODIGO} value={rep.CODIGO}>
-                        {rep.NOME}
-                      </option>
-                  ))}
-                </select>
-              </div>
-              <div className="filter-group">
-                <label>Início</label>
-                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-              </div>
-              <div className="filter-group">
-                <label>Fim</label>
-                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-              </div>
+              
               <button 
                 onClick={() => {
                   if (activeTab === 'FAT' || activeTab.startsWith('COMISSOES') || activeTab === 'PAGAMENTOS') {
                     fetchFaturamentos();
+                  } else if (activeTab.startsWith('CRM_')) {
+                    // Os componentes de CRM costumam reagir aos estados startDate/endDate diretamente
+                    // Mas vamos emitir o evento para garantir
+                    window.dispatchEvent(new Event('crm_filter_change'));
                   } else {
                     fetchPedidos();
                   }
@@ -553,7 +606,7 @@ function App() {
           ) : activeTab === 'CRM_PIPELINE' ? (
             <PipelineCRM pedidos={pedidos} />
           ) : activeTab === 'CRM_FOLLOWUP' ? (
-            <FollowUpList />
+            <FollowUpList startDate={startDate} endDate={endDate} representante={representante} />
           ) : activeTab === 'CRM_AGENDA' ? (
             <AgendaCRM allowedRepsList={allowedRepsList} permissions={permissions} session={session} />
           ) : activeTab === 'CRM_TAREFAS' ? (
